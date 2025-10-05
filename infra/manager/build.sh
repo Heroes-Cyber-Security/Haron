@@ -1,1 +1,1 @@
-docker build -t hanzceo/blockchain_manager .
+docker build -t hanz.dev/blockchain/manager .
