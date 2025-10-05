@@ -1,0 +1,1 @@
+docker build -t hanz.dev/blockchain/worker .
