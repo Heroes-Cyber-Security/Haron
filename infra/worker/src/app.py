@@ -1,8 +1,10 @@
+import zipfile
 from gevent import monkey; monkey.patch_all()
 from bottle import get, post, run, request
 import subprocess, os, uuid
 
 jobs = {}
+initialized = set()
 
 class Job(object):
 	uid: str
@@ -25,10 +27,15 @@ def delegate(h):
 	/delegate/:h?anvil_endpoint=
 	"""
 	uid = str(uuid.uuid4())
+	cwd = f"/home/ctf/cache/{h}/"
 
 	jobs[uid] = Job(uid, h, request.query['anvil_endpoint'])
-	cwd = f"/home/ctf/cache/{h}/"
-	subprocess.run("pip install -r requirements.txt", shell=True, cwd=cwd)
+	
+	if h not in initialized:
+		with zipfile.ZipFile(cwd + "challenge.zip", "r") as zr:
+			zr.extractall(cwd)
+		subprocess.run("pip install -r requirements.txt", shell=True, cwd=cwd)
+		initialized.add(h)
 
 	return uid
 
@@ -44,7 +51,7 @@ def package(h):
 def package_post(h):
 	cachePath = f"cache/{h}/"
 	for item in request.files:
-		item.save(cachePath + item.raw_filename, overwrite=True)
+		item.save(cachePath + "challenge.zip", overwrite=True)
 	return "OK"
 
 os.mkdir("cache")
