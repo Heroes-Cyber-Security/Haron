@@ -1,0 +1,15 @@
+name: blockchain-infra
+
+services:
+  manager:
+    image: hanz.dev/blockchain/manager
+    env_file:
+      - ./manager/.env
+    volumes:
+      - ./challenges:/home/ctf/challenges:ro
+    restart: always
+  worker:
+    image: hanz.dev/blockchain/worker
+    env_file:
+      - ./worker/.env
+    restart: always
