@@ -1,0 +1,4 @@
+Required env vars:
+- TELEGRAM_API_KEY
+- TELEGRAM_CHAT_ID
+- CHALLENGE_NAME
