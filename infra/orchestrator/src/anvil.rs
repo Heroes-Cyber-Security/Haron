@@ -3,7 +3,10 @@ pub use anvil::NodeConfig;
 
 use anvil::NodeHandle;
 use eyre::Result;
-use std::ops::{Deref, DerefMut};
+use std::{
+	ops::{Deref, DerefMut},
+	time::Duration
+};
 
 pub struct HeadlessNodeHandle {
 	inner: Option<NodeHandle>,
@@ -14,21 +17,44 @@ impl HeadlessNodeHandle {
 		Self { inner: Some(inner) }
 	}
 
+	fn fire_shutdown_signal(inner: &mut NodeHandle) {
+		if let Some(signal) = inner.shutdown_signal_mut().take() {
+			if signal.fire().is_err() {
+				eprintln!("failed to fire shutdown signal");
+			}
+		}
+	}
+
+	fn abort_servers(inner: &mut NodeHandle) {
+		for server in inner.servers.drain(..) {
+			server.abort();
+		}
+	}
+
+	async fn abort_and_join_servers(inner: &mut NodeHandle) {
+		for server in inner.servers.drain(..) {
+			server.abort();
+			match server.await {
+				Ok(Ok(())) => {}
+				Ok(Err(err)) => eprintln!("anvil server exited with error: {err:?}"),
+				Err(err) if err.is_cancelled() => {}
+				Err(err) => eprintln!("anvil server join error: {err:?}"),
+			}
+		}
+	}
+
 	pub async fn shutdown(mut self) {
 		if let Some(mut inner) = self.inner.take() {
-			if let Some(signal) = inner.shutdown_signal_mut().take() {
-				let _ = signal.fire();
-			}
-
-			for server in &inner.servers {
-				server.abort();
-			}
-			while let Some(server) = inner.servers.pop() {
-				let _ = server.await;
-			}
+			Self::fire_shutdown_signal(&mut inner);
+			Self::abort_and_join_servers(&mut inner).await;
 
 			inner.node_service.abort();
-			let _ = (&mut inner.node_service).await;
+			match (&mut inner.node_service).await {
+				Ok(Ok(())) => {}
+				Ok(Err(err)) => eprintln!("anvil node service exited with error: {err:?}"),
+				Err(err) if err.is_cancelled() => {}
+				Err(err) => eprintln!("anvil node service join error: {err:?}"),
+			}
 		}
 	}
 }
@@ -50,13 +76,8 @@ impl DerefMut for HeadlessNodeHandle {
 impl Drop for HeadlessNodeHandle {
 	fn drop(&mut self) {
 		if let Some(mut inner) = self.inner.take() {
-			if let Some(signal) = inner.shutdown_signal_mut().take() {
-				let _ = signal.fire();
-			}
-
-			for server in inner.servers.drain(..) {
-				server.abort();
-			}
+			Self::fire_shutdown_signal(&mut inner);
+			Self::abort_servers(&mut inner);
 
 			inner.node_service.abort();
 		}
@@ -76,8 +97,10 @@ pub async fn try_spawn(mut config: NodeConfig) -> Result<(EthApi, HeadlessNodeHa
 	let (api, mut handle) = anvil::try_spawn(config).await?;
 
 	if !handle.servers.is_empty() {
-		handle.servers.iter().for_each(|server| server.abort());
-		handle.servers.clear();
+		for server in handle.servers.drain(..) {
+			server.abort();
+			let _ = server.await;
+		}
 	}
 
 	Ok((api, HeadlessNodeHandle::new(handle)))

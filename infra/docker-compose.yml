@@ -13,3 +13,8 @@ services:
     env_file:
       - ./worker/.env
     restart: always
+  orchestrator:
+    image: hanz.dev/blockchain/orchestrator
+    env_file:
+      - ./orchestrator/.env
+    restart: always

@@ -52,8 +52,19 @@ async fn service_deploy(state: web::Data<AppState>, params: web::Path<String>) -
         }
     };
 
+    let entry = NodeEntry::new(api, handle);
+
     let mut nodes = state.nodes.lock().await;
-    nodes.insert(id, NodeEntry::new(api, handle));
+    if nodes.contains_key(&id) {
+        drop(nodes);
+
+        entry.shutdown().await;
+        trim_allocator();
+
+        return "ALREADY_EXISTS";
+    }
+
+    nodes.insert(id, entry);
     drop(nodes);
 
     "OK"
