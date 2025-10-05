@@ -1,0 +1,1 @@
+docker build -t hanzceo/blockchain_manager .
