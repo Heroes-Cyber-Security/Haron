@@ -9,6 +9,7 @@ require (
 
 require (
 	git.urbach.dev/go/router v0.0.0-20250721083733-8d04266bc544 // indirect
+	github.com/ddo/rq v0.0.0-20190828174524-b3daa55fcaba
 	github.com/google/uuid v1.6.0
 	golang.org/x/sys v0.36.0 // indirect
 )

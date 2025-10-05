@@ -15,4 +15,6 @@ RUN tar xzf go.tar.gz
 COPY src /home/ctf/
 RUN /home/ctf/go/bin/go build
 
+VOLUME [ "/home/ctf/challenges/" ]
+
 ENTRYPOINT [ "/home/ctf/manager" ]

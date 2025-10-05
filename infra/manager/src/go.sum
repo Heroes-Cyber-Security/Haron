@@ -4,6 +4,8 @@ git.urbach.dev/go/router v0.0.0-20250721083733-8d04266bc544 h1:ChhCFmPVTDzj5rdzY
 git.urbach.dev/go/router v0.0.0-20250721083733-8d04266bc544/go.mod h1:seUQ5raGaj6fDeZP6d7JdgnWQys8oTrtFdvBhAp1IZA=
 git.urbach.dev/hanz/web v0.0.0-20251005025545-fa43127528a6 h1:HdoYPI4V97D5RVPHLB2ZFrWyPr8CaCrkOHsxg4sb6i0=
 git.urbach.dev/hanz/web v0.0.0-20251005025545-fa43127528a6/go.mod h1:ON84DswRfsjIgAloDGjbt9PWWhDcMVEek3LsCHuYnOg=
+github.com/ddo/rq v0.0.0-20190828174524-b3daa55fcaba h1:EMLQSxP68m4ddJpmMT+LizYO0AjrROprPXjll2CARj0=
+github.com/ddo/rq v0.0.0-20190828174524-b3daa55fcaba/go.mod h1:XIayI7kdKklkc7yyWDBYMJLbK/AO4AchQUxdoSFcn+k=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 golang.org/x/crypto v0.42.0 h1:chiH31gIWm57EkTXpwnqf8qeuMUi0yekh6mT2AvFlqI=

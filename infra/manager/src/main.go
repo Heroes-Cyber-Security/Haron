@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 
 	"blockchain.hanz.dev/manager/integration"
+	"blockchain.hanz.dev/manager/interop"
 	"blockchain.hanz.dev/manager/types"
 )
 
@@ -30,13 +31,18 @@ func main() {
 
 	s.Post("/create", func(ctx web.Context) error {
 		accessToken := ctx.Request().Header("Token")
+		challengeHash := ctx.Request().Header("Challenge")
 		playerIP := ctx.Request().RemoteIP()
+
 		if pea, ok := peas[accessToken]; ok {
 			return Jsonify(ctx, map[string]any{"id": pea.Id})
 		}
 
 		pea := types.Pea{Id: uuid.NewString(), AccessToken: accessToken}
 		peas[accessToken] = pea
+
+		interop.DelegateJob(challengeHash, pea)
+
 		integration.NotifyPeaCreationTelegram(pea, playerIP)
 
 		return Jsonify(ctx, map[string]any{"id": pea.Id})
