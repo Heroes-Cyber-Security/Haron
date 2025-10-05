@@ -48,18 +48,20 @@ func NotifyFlagTelegram(pea types.Pea, playerIP string, flag string) {
 		panic("missing CHALLENGE_NAME")
 	}
 
-	format := "<code>%s</code> solved <code>%s</code>\n<code>%s</code>\n<code>%s</code>"
-	msg := fmt.Sprintf(format, playerIP, challengeName, flag, pea.Id)
+	playerName := CTFDGetMe(pea).Name
+	format := "<code>%s</code> (<code>%s</code>) solved <code>%s</code>\n<code>%s</code>\n<code>%s</code>"
+	msg := fmt.Sprintf(format, playerName, playerIP, challengeName, flag, pea.Id)
 	sendMessage(msg)
 }
 
-func NotifyPeaCreationTelegram(pea types.Pea, playerIP string, flag string) {
+func NotifyPeaCreationTelegram(pea types.Pea, playerIP string) {
 	challengeName, exists := os.LookupEnv("CHALLENGE_NAME")
 	if !exists {
 		panic("missing CHALLENGE_NAME")
 	}
 
-	format := "<code>%s</code> instantiated <code>%s</code>\n<code>%s</code>"
-	msg := fmt.Sprintf(format, playerIP, challengeName, pea.Id)
+	playerName := CTFDGetMe(pea).Name
+	format := "<code>%s</code> (<code>%s</code>) instantiated <code>%s</code>\n<code>%s</code>"
+	msg := fmt.Sprintf(format, playerName, playerIP, challengeName, pea.Id)
 	sendMessage(msg)
 }

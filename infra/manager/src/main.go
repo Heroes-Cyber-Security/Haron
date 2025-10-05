@@ -30,27 +30,28 @@ func main() {
 
 	s.Post("/create", func(ctx web.Context) error {
 		accessToken := ctx.Request().Header("Token")
+		playerIP := ctx.Request().RemoteIP()
 		if pea, ok := peas[accessToken]; ok {
 			return Jsonify(ctx, map[string]any{"id": pea.Id})
 		}
 
 		pea := types.Pea{Id: uuid.NewString(), AccessToken: accessToken}
 		peas[accessToken] = pea
-		// TODO: Notify of Pea creation
+		integration.NotifyPeaCreationTelegram(pea, playerIP)
+
 		return Jsonify(ctx, map[string]any{"id": pea.Id})
 	})
 
 	s.Get("/flag", func(ctx web.Context) error {
 		accessToken := ctx.Request().Header("Token")
-		playerIP := ctx.Request().Header("PlayerIP")
+		playerIP := ctx.Request().RemoteIP()
 		pea, ok := peas[accessToken]
 		if accessToken == "" || !ok {
 			return Jsonify(ctx, map[string]any{"error": "Access token invalid"})
 		}
 
-		// TODO: Notify of Flag creation
 		flag := GenerateFlag(pea)
-		integration.NotifyPeaCreationTelegram(pea, playerIP, flag)
+		integration.NotifyFlagTelegram(pea, playerIP, flag)
 
 		return Jsonify(ctx, map[string]any{"flag": flag})
 	})
