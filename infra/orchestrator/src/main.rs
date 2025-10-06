@@ -102,7 +102,7 @@ async fn service_deploy(state: web::Data<AppState>, params: web::Path<String>) -
         }
     }
 
-    let config = anvil::NodeConfig::default();
+    let config = anvil::create_config();
     let entry = match spawn_supervised_node(config).await {
         Ok(entry) => entry,
         Err(err) => {

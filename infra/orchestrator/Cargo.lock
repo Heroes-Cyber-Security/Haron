@@ -5342,6 +5342,7 @@ dependencies = [
  "anvil",
  "anvil-core",
  "anvil-rpc",
+ "clap_builder",
  "eyre",
  "futures-util",
  "libc",

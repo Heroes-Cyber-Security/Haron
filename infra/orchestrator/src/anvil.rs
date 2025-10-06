@@ -1,7 +1,9 @@
 pub use anvil::NodeConfig;
+pub use anvil::cmd::NodeArgs;
 pub use anvil::eth::EthApi;
 pub use anvil::pubsub::{EthSubscription, LogsSubscription};
 
+use clap_builder::Parser;
 use anvil::NodeHandle;
 use eyre::Result;
 use std::ops::{Deref, DerefMut};
@@ -88,14 +90,6 @@ impl Drop for HeadlessNodeHandle {
 
 /// Spawns an Anvil node without launching the HTTP/WS server tasks
 pub async fn try_spawn(mut config: NodeConfig) -> Result<(EthApi, HeadlessNodeHandle)> {
-    config.silent = true;
-    config.enable_tracing = false;
-    config.print_logs = false;
-    config.print_traces = false;
-    config.no_storage_caching = true;
-    config.max_persisted_states = Some(0);
-    config.host.clear();
-
     let (api, mut handle) = anvil::try_spawn(config).await?;
 
     if !handle.servers.is_empty() {
@@ -106,4 +100,24 @@ pub async fn try_spawn(mut config: NodeConfig) -> Result<(EthApi, HeadlessNodeHa
     }
 
     Ok((api, HeadlessNodeHandle::new(handle)))
+}
+
+pub fn create_config() -> NodeConfig {
+    let mut node_args: NodeArgs = NodeArgs::parse_from([
+        "anvil",
+        "--accounts", "0",
+        "--block-time", "1"
+    ]);
+
+    let mut config: NodeConfig = node_args.into_node_config().expect("Anvil NodeArgs transform to NodeConfig fail");
+
+    config.silent = true;
+    config.enable_tracing = false;
+    config.print_logs = false;
+    config.print_traces = false;
+    config.no_storage_caching = true;
+    config.max_persisted_states = Some(0);
+    config.host.clear();
+
+    config
 }
