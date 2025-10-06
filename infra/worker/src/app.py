@@ -54,5 +54,6 @@ def package_post(h):
 		item.save(cachePath + "challenge.zip", overwrite=True)
 	return "OK"
 
-os.mkdir("cache")
+if not os.path.exists("cache"):
+	os.mkdir("cache")
 run(host="0.0.0.0", server='gevent')
