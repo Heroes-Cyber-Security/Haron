@@ -23,7 +23,7 @@ func main() {
 		accessToken := ctx.Request().Header("Token")
 
 		if _, ok := peas[accessToken]; !ok {
-			return Jsonify(ctx, map[string]any{"error": "Instance not found"})
+			return Jsonify(ctx, map[string]any{"error": "Unauthorized: Instance not found"})
 		}
 
 		pea := peas[accessToken]
@@ -37,6 +37,12 @@ func main() {
 		accessToken := ctx.Request().Header("Token")
 		challengeHash := ctx.Request().Header("Challenge")
 		playerIP := ctx.Request().RemoteIP()
+
+		if accessToken == "" {
+			return Jsonify(ctx, map[string]any{"error": "Unauthorized: Access Token"})
+		} else if challengeHash == "" {
+			return Jsonify(ctx, map[string]any{"error": "Unauthorized: Challenge Hash"})
+		}
 
 		if pea, ok := peas[accessToken]; ok {
 			return Jsonify(ctx, map[string]any{"id": pea.Id})
@@ -57,8 +63,11 @@ func main() {
 		accessToken := ctx.Request().Header("Token")
 		playerIP := ctx.Request().RemoteIP()
 		pea, ok := peas[accessToken]
-		if accessToken == "" || !ok {
-			return Jsonify(ctx, map[string]any{"error": "Access token invalid"})
+
+		if accessToken == "" {
+			return Jsonify(ctx, map[string]any{"error": "Unauthorized: Access Token"})
+		} else if !ok {
+			return Jsonify(ctx, map[string]any{"error": "Unauthorized: Instance does not exists"})
 		}
 
 		flag := GenerateFlag(pea)
