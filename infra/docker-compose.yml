@@ -7,6 +7,8 @@ services:
       - ./manager/.env
     volumes:
       - ./challenges:/home/ctf/challenges:ro
+    ports:
+      - "40000:8080"
     restart: always
   worker:
     image: hanz.dev/blockchain/worker
@@ -22,4 +24,9 @@ services:
     image: hanz.dev/blockchain/forwarder
     env_file:
       - ./forwarder/.env
+    ports:
+      - "40001:8080"
+    restart: always
+  mock-ctfd:
+    image: hanz.dev/blockchain/mock-ctfd
     restart: always
