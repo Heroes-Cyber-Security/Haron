@@ -3,10 +3,10 @@ mod eth;
 mod supervisor;
 mod types;
 
-use eth::http as eth_http;
+use eth::{http as eth_http, ws as eth_ws};
 
-use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
-use anvil_rpc::{request::Request as RpcRequest, response::Response as RpcResponseEnvelope};
+use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use anvil_rpc::request::Request as RpcRequest;
 use eyre::{Result as EyreResult, eyre};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -211,26 +211,29 @@ async fn forward_eth_json_rpc(
     }
 }
 
+#[get("/anvil/{id}")]
+async fn forward_eth_json_rpc_ws(
+    state: web::Data<AppState>,
+    params: web::Path<String>,
+    req: HttpRequest,
+    payload: web::Payload,
+) -> Result<HttpResponse, actix_web::Error> {
+    let id = params.into_inner();
+
+    let sender = {
+        let nodes = state.nodes.lock().await;
+        match nodes.get(&id) {
+            Some(node) => node.sender.clone(),
+            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+        }
+    };
+
+    eth_ws::start_json_rpc_websocket(&req, payload, id, sender)
+}
+
 fn process_rpc_request(api: anvil::EthApi, request: RpcRequest) -> types::RpcForwardResult {
     let handle = tokio::runtime::Handle::current();
-    match request {
-        RpcRequest::Single(call) => {
-            eth_http::handle_rpc_call(&handle, &api, call).map(RpcResponseEnvelope::Single)
-        }
-        RpcRequest::Batch(calls) => {
-            let mut responses = Vec::with_capacity(calls.len());
-            for call in calls {
-                if let Some(response) = eth_http::handle_rpc_call(&handle, &api, call) {
-                    responses.push(response);
-                }
-            }
-            if responses.is_empty() {
-                None
-            } else {
-                Some(RpcResponseEnvelope::Batch(responses))
-            }
-        }
-    }
+    eth_http::execute_rpc_request(&handle, &api, request)
 }
 
 fn trim_allocator() {
@@ -250,6 +253,7 @@ async fn main() -> std::io::Result<()> {
             .service(service_deploy)
             .service(stop_node)
             .service(forward_eth_json_rpc)
+            .service(forward_eth_json_rpc_ws)
     })
     .bind("0.0.0.0:8080")?
     .run()

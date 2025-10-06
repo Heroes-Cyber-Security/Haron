@@ -1,9 +1,34 @@
 use super::helper::{build_eth_request, map_serde_error};
 
 use anvil_rpc::{
-    request::{RpcCall, RpcMethodCall, RpcNotification},
-    response::{ResponseResult, RpcResponse},
+    request::{Request as RpcRequest, RpcCall, RpcMethodCall, RpcNotification},
+    response::{Response as RpcResponseEnvelope, ResponseResult, RpcResponse},
 };
+
+pub fn execute_rpc_request(
+    handle: &tokio::runtime::Handle,
+    api: &crate::anvil::EthApi,
+    request: RpcRequest,
+) -> crate::types::RpcForwardResult {
+    match request {
+        RpcRequest::Single(call) => {
+            handle_rpc_call(handle, api, call).map(RpcResponseEnvelope::Single)
+        }
+        RpcRequest::Batch(calls) => {
+            let mut responses = Vec::with_capacity(calls.len());
+            for call in calls {
+                if let Some(response) = handle_rpc_call(handle, api, call) {
+                    responses.push(response);
+                }
+            }
+            if responses.is_empty() {
+                None
+            } else {
+                Some(RpcResponseEnvelope::Batch(responses))
+            }
+        }
+    }
+}
 
 pub fn handle_rpc_call(
     handle: &tokio::runtime::Handle,

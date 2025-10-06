@@ -5,7 +5,9 @@ edition = "2024"
 author = "Hanz <hi@hanz.dev>"
 
 [dependencies]
+actix = "0.13"
 actix-web = "4.11.0"
+actix-web-actors = "4.3"
 anvil = { git = "https://github.com/foundry-rs/foundry", version = "1.4.0", rev = "b7d4970e49ad61ab07ef92f6ad0213b8782a2e46" }
 anvil-core = { git = "https://github.com/foundry-rs/foundry", version = "1.4.0", rev = "b7d4970e49ad61ab07ef92f6ad0213b8782a2e46" }
 anvil-rpc = { git = "https://github.com/foundry-rs/foundry", version = "1.4.0", rev = "b7d4970e49ad61ab07ef92f6ad0213b8782a2e46" }
