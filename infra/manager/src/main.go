@@ -21,9 +21,13 @@ func main() {
 	// Interface for `webui`
 	s.Post("/stop", func(ctx web.Context) error {
 		accessToken := ctx.Request().Header("Token")
+
 		if _, ok := peas[accessToken]; !ok {
 			return Jsonify(ctx, map[string]any{"error": "Instance not found"})
 		}
+
+		pea := peas[accessToken]
+		interop.Stop(pea)
 
 		delete(peas, accessToken)
 		return Jsonify(ctx, map[string]any{"success": true})
@@ -42,6 +46,7 @@ func main() {
 		peas[accessToken] = pea
 
 		interop.DelegateJob(challengeHash, pea)
+		interop.Deploy(pea)
 
 		integration.NotifyPeaCreationTelegram(pea, playerIP)
 
