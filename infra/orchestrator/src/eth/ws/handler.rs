@@ -2,7 +2,7 @@ use super::session::JsonRpcWebsocketSession;
 
 use crate::supervisor;
 
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use actix_web_actors::ws;
 use tokio::sync::mpsc;
 

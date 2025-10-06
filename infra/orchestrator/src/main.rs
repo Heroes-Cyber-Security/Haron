@@ -5,7 +5,7 @@ mod types;
 
 use eth::{http as eth_http, ws as eth_ws};
 
-use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, Responder, get, post, web};
 use anvil_rpc::request::Request as RpcRequest;
 use eyre::{Result as EyreResult, eyre};
 use serde_json::Value;

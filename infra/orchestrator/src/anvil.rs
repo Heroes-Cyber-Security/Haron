@@ -1,5 +1,6 @@
 pub use anvil::NodeConfig;
 pub use anvil::eth::EthApi;
+pub use anvil::pubsub::{EthSubscription, LogsSubscription};
 
 use anvil::NodeHandle;
 use eyre::Result;
