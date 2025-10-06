@@ -1,15 +1,14 @@
 mod anvil;
+mod eth;
 mod supervisor;
+mod types;
+
+use eth::http as eth_http;
 
 use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
-use anvil_core::eth::EthRequest;
-use anvil_rpc::{
-    error::RpcError,
-    request::{Request as RpcRequest, RequestParams, RpcCall, RpcMethodCall, RpcNotification},
-    response::{Response as RpcResponseEnvelope, ResponseResult, RpcResponse},
-};
+use anvil_rpc::{request::Request as RpcRequest, response::Response as RpcResponseEnvelope};
 use eyre::{Result as EyreResult, eyre};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::collections::HashMap;
 use tokio::{
     sync::{Mutex, mpsc, oneshot},
@@ -212,18 +211,16 @@ async fn forward_eth_json_rpc(
     }
 }
 
-type RpcForwardResult = Option<RpcResponseEnvelope>;
-
-fn process_rpc_request(api: anvil::EthApi, request: RpcRequest) -> RpcForwardResult {
+fn process_rpc_request(api: anvil::EthApi, request: RpcRequest) -> types::RpcForwardResult {
     let handle = tokio::runtime::Handle::current();
     match request {
         RpcRequest::Single(call) => {
-            handle_rpc_call(&handle, &api, call).map(RpcResponseEnvelope::Single)
+            eth_http::handle_rpc_call(&handle, &api, call).map(RpcResponseEnvelope::Single)
         }
         RpcRequest::Batch(calls) => {
             let mut responses = Vec::with_capacity(calls.len());
             for call in calls {
-                if let Some(response) = handle_rpc_call(&handle, &api, call) {
+                if let Some(response) = eth_http::handle_rpc_call(&handle, &api, call) {
                     responses.push(response);
                 }
             }
@@ -233,78 +230,6 @@ fn process_rpc_request(api: anvil::EthApi, request: RpcRequest) -> RpcForwardRes
                 Some(RpcResponseEnvelope::Batch(responses))
             }
         }
-    }
-}
-
-fn handle_rpc_call(
-    handle: &tokio::runtime::Handle,
-    api: &anvil::EthApi,
-    call: RpcCall,
-) -> Option<RpcResponse> {
-    match call {
-        RpcCall::MethodCall(method_call) => Some(handle_method_call(handle, api, method_call)),
-        RpcCall::Notification(notification) => {
-            handle_notification(handle, api, notification);
-            None
-        }
-        RpcCall::Invalid { id } => Some(RpcResponse::invalid_request(id)),
-    }
-}
-
-fn handle_method_call(
-    handle: &tokio::runtime::Handle,
-    api: &anvil::EthApi,
-    call: RpcMethodCall,
-) -> RpcResponse {
-    let RpcMethodCall {
-        method, params, id, ..
-    } = call;
-    match build_eth_request(method, params) {
-        Ok(eth_request) => {
-            let result = handle.block_on(api.execute(eth_request));
-            RpcResponse::new(id, result)
-        }
-        Err(err) => {
-            let rpc_error = map_serde_error(err);
-            RpcResponse::new(id, ResponseResult::Error(rpc_error))
-        }
-    }
-}
-
-fn handle_notification(
-    handle: &tokio::runtime::Handle,
-    api: &anvil::EthApi,
-    notification: RpcNotification,
-) {
-    let RpcNotification { method, params, .. } = notification;
-    match build_eth_request(method, params) {
-        Ok(eth_request) => {
-            let _ = handle.block_on(api.execute(eth_request));
-        }
-        Err(err) => {
-            eprintln!("failed to parse json-rpc notification: {err}");
-        }
-    }
-}
-
-fn build_eth_request(
-    method: String,
-    params: RequestParams,
-) -> Result<EthRequest, serde_json::Error> {
-    let params_value: Value = params.into();
-    let value = json!({ "method": method, "params": params_value });
-    serde_json::from_value(value)
-}
-
-fn map_serde_error(err: serde_json::Error) -> RpcError {
-    use serde_json::error::Category;
-    match err.classify() {
-        Category::Data if err.to_string().contains("unknown variant") => {
-            RpcError::method_not_found()
-        }
-        Category::Data => RpcError::invalid_params(err.to_string()),
-        Category::Syntax => RpcError::parse_error(),
-        Category::Io | Category::Eof => RpcError::internal_error(),
     }
 }
 
