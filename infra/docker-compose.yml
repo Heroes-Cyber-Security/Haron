@@ -18,3 +18,8 @@ services:
     env_file:
       - ./orchestrator/.env
     restart: always
+  forwarder:
+    image: hanz.dev/blockchain/forwarder
+    env_file:
+      - ./forwarder/.env
+    restart: always
