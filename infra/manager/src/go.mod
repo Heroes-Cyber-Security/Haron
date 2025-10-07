@@ -14,4 +14,4 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 )
 
-replace git.urbach.dev/go/web => git.urbach.dev/hanz/web v0.0.0-20251005025545-fa43127528a6
+replace git.urbach.dev/go/web => git.urbach.dev/hanz/web v0.0.0-20251006115005-3928f72f577d

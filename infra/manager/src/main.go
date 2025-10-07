@@ -14,6 +14,16 @@ var peas = make(map[string]types.Pea)
 func main() {
 	s := web.NewServer()
 
+	// CORS
+	s.Use(func(ctx web.Context) error {
+		ctx.Response().SetHeader("Access-Control-Allow-Origin", "*")
+		ctx.Response().SetHeader("Access-Control-Allow-Methods", "*")
+		ctx.Response().SetHeader("Access-Control-Allow-Headers", "*")
+
+		ctx.Next(ctx)
+		return nil
+	})
+
 	s.All("/", func(ctx web.Context) error {
 		return Jsonify(ctx, map[string]string{"message": "hello from manager"})
 	})
@@ -36,7 +46,7 @@ func main() {
 	s.Post("/create", func(ctx web.Context) error {
 		accessToken := ctx.Request().Header("Token")
 		challengeHash := ctx.Request().Header("Challenge")
-		playerIP := ctx.Request().RemoteIP()
+		playerIP := ctx.RemoteIP()
 
 		if accessToken == "" {
 			return Jsonify(ctx, map[string]any{"error": "Unauthorized: Access Token"})
@@ -61,7 +71,7 @@ func main() {
 
 	s.Get("/flag", func(ctx web.Context) error {
 		accessToken := ctx.Request().Header("Token")
-		playerIP := ctx.Request().RemoteIP()
+		playerIP := ctx.RemoteIP()
 		pea, ok := peas[accessToken]
 
 		if accessToken == "" {
@@ -74,6 +84,13 @@ func main() {
 		integration.NotifyFlagTelegram(pea, playerIP, flag)
 
 		return Jsonify(ctx, map[string]any{"flag": flag})
+	})
+
+	// CTFd helpers
+	s.Get("/profile", func(ctx web.Context) error {
+		player := integration.CTFDGetMe(types.Pea{AccessToken: ctx.Request().Query().Param("id")})
+
+		return Jsonify(ctx, map[string]any{"data": player.ToJSON()})
 	})
 
 	s.Run(":8080")

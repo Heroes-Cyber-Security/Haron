@@ -12,6 +12,10 @@ RUN wget https://go.dev/dl/go1.25.1.linux-amd64.tar.gz -O go.tar.gz
 RUN tar xzf go.tar.gz
 
 # Compile sources
+COPY src/go.mod /home/ctf/
+COPY src/go.sum /home/ctf/
+RUN /home/ctf/go/bin/go mod download
+
 COPY src /home/ctf/
 RUN /home/ctf/go/bin/go build
 
