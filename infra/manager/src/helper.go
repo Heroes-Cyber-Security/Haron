@@ -1,19 +1,11 @@
 package main
 
 import (
-	"encoding/json"
+	"net/http"
 
-	"git.urbach.dev/go/web"
+	"github.com/labstack/echo/v4"
 )
 
-func Jsonify(ctx web.Context, obj any) error {
-	ctx.Response().SetHeader("Content-Type", "application/json")
-
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-	ctx.Response().SetBody(data)
-
-	return nil
+func Jsonify(ctx echo.Context, obj any) error {
+	return ctx.JSON(http.StatusOK, obj)
 }

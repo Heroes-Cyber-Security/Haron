@@ -3,15 +3,23 @@ module blockchain.hanz.dev/manager
 go 1.25.1
 
 require (
-	git.urbach.dev/go/web v0.0.0
+	github.com/labstack/echo/v4 v4.13.4
 	golang.org/x/crypto v0.42.0
 )
 
 require (
-	git.urbach.dev/go/router v0.0.0-20250721083733-8d04266bc544 // indirect
+	github.com/labstack/gommon v0.4.2 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasttemplate v1.2.2 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/time v0.11.0 // indirect
+)
+
+require (
 	github.com/ddo/rq v0.0.0-20190828174524-b3daa55fcaba
 	github.com/google/uuid v1.6.0
 	golang.org/x/sys v0.36.0 // indirect
 )
-
-replace git.urbach.dev/go/web => git.urbach.dev/hanz/web v0.0.0-20251006115005-3928f72f577d
