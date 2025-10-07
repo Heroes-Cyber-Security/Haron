@@ -63,6 +63,9 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 
 	const handleStop = async (e) => {
 		if (!instance.id) return;
+		setInstance(x => ({
+			stopping: true
+		}));
 
 		const res = apiClient.post('/stop', undefined, {
 			headers: {
@@ -74,6 +77,10 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 
 	const handleFlag = async (e) => {
 		if (!instance.id) return;
+		setInstance(x => ({
+			...x,
+			loading: true
+		}));
 		
 		const res = await apiClient.get('/flag', {
 			headers: {
@@ -84,6 +91,10 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 		const flag = data.flag;
 
 		setFlag(flag);
+		setInstance(x => ({
+			...x,
+			loading: false
+		}));
 	}
 
 	return <div className="challenge_panel">
@@ -106,8 +117,18 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 					disabled={!!instance.id || !!instance.starting}
 					onClick={handleStart}
 				/>
-				<input type="submit" value="Stop" disabled={!instance.id} onClick={handleStop} />
-				<input type="submit" value="Flag" disabled={!instance.id} onClick={handleFlag} />
+				<input
+					type="submit"
+					value={instance.stopping ? "Stopping..." : "Stop"}
+					disabled={!instance.id || !!instance.stopping}
+					onClick={handleStop}
+				/>
+				<input
+					type="submit"
+					value={instance.loading ? "Fetching..." : "Flag"}
+					disabled={!instance.id || !!instance.loading}
+					onClick={handleFlag}
+				/>
 			</form>
 		</div>
 	</div>;
