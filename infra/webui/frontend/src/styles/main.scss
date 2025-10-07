@@ -46,20 +46,17 @@ input, select {
 	background: var(--surface-opaque);
 	border: none;
 	position: relative;
-	z-index: 1;
 
 	&[type=submit]:not([disabled]) {
 		&:hover {
 			background: var(--button-hover);
 			color: var(--bg);
-			z-index: 3;
 			outline: 0;
 		}
 
 		&:active {
 			background: var(--button-active);
 			color: var(--bg);
-			z-index: 3;
 			outline: 0;
 		}
 	}
