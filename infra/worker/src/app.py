@@ -1,6 +1,6 @@
 import zipfile
 from gevent import monkey; monkey.patch_all()
-from bottle import get, post, run, request
+from bottle import get, post, run, request, HTTPError
 import subprocess, os, uuid
 
 jobs = {}
@@ -32,16 +32,16 @@ def delegate(h):
 	jobs[uid] = Job(uid, h, request.query['anvil_endpoint'])
 	
 	if h not in initialized:
-		with zipfile.ZipFile(cwd + "challenge.zip", "r") as zr:
+		with zipfile.ZipFile(cwd + h + ".zip", "r") as zr:
 			zr.extractall(cwd)
-		subprocess.run("pip install -r requirements.txt", shell=True, cwd=cwd)
+		subprocess.run(f"pip install -r {cwd}requirements.txt", shell=True, cwd=cwd)
 		initialized.add(h)
 
 	return uid
 
 @get("/package/:h")
 def package(h):
-	cachePath = f"cache/{h}/"
+	cachePath = f"/home/ctf/cache/{h}/"
 	if not os.path.exists(cachePath):
 		os.mkdir(cachePath)
 		return "false"
@@ -49,9 +49,12 @@ def package(h):
 
 @post("/package/:h")
 def package_post(h):
-	cachePath = f"cache/{h}/"
-	for item in request.files:
-		item.save(cachePath + "challenge.zip", overwrite=True)
+	cachePath = f"/home/ctf/cache/{h}/"
+	os.makedirs(cachePath, exist_ok=True)
+	upload = next(iter(request.files.values()), None)
+	if upload is None:
+		raise HTTPError(400, "No file uploaded")
+	upload.save(os.path.join(cachePath, f"{h}.zip"), overwrite=True)
 	return "OK"
 
 if not os.path.exists("cache"):
