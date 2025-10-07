@@ -2,6 +2,7 @@ import {useEffect, useState} from 'react';
 import axios from 'axios';
 
 import Authentication from './components/Authentication';
+import ChallengePanel from './components/ChallengePanel';
 
 export const apiClient = axios.create({
 	baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
@@ -19,13 +20,8 @@ const App = () => {
 	return (
 		<div className="app">
 			<div className="launcher">
-				<div className="div1">
-					<select>
-						<option>Challenge 1</option>
-						<option>Challenge 2</option>
-						<option>Challenge 3</option>
-						<option>Challenge 4</option>
-					</select>
+				<div className="div1" style={{"padding": "0"}}>
+					<ChallengePanel account={account} />
 				</div>
 				<div className="div2">2</div>
 				<div className="div3">3</div>
