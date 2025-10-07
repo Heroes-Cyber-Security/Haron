@@ -13,16 +13,22 @@ const App = () => {
 	const [status, setStatus] = useState({loading: true, error: null, data: null});
 	const [account, setAccount] = useState({name: "", accessToken: ""});
 	const [instance, setInstance] = useState({id: ""});
+	const [flag, setFlag] = useState("");
 
 	useEffect(() => {
-		
-	}, []);
+		if (flag) alert(flag);
+	}, [flag]);
 
 	return (
 		<div className="app">
 			<div className="launcher">
 				<div className="div1" style={{"padding": "0"}}>
-					<ChallengePanel account={account} instance={instance} setInstance={setInstance} />
+					<ChallengePanel
+						account={account}
+						instance={instance}
+						setInstance={setInstance}
+						setFlag={setFlag}
+					/>
 				</div>
 				<div className="div2">{instance.id}</div>
 				<div className="div3">3</div>

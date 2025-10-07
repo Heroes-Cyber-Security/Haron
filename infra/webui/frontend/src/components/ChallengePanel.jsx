@@ -4,7 +4,7 @@ import Markdown from "./Markdown";
 
 async function create(token, challenge) {}
 
-const ChallengePanel = ({account, instance, setInstance}) => {
+const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 	const [challengeHash, setChallenge] = useState("");
 	const [readme, setReadme] = useState("");
 	const [challenges, setChallenges] = useState([]);
@@ -73,7 +73,17 @@ const ChallengePanel = ({account, instance, setInstance}) => {
 	}
 
 	const handleFlag = async (e) => {
+		if (!instance.id) return;
 		
+		const res = await apiClient.get('/flag', {
+			headers: {
+				Token: account.accessToken
+			}
+		});
+		const data = res.data;
+		const flag = data.flag;
+
+		setFlag(flag);
 	}
 
 	return <div className="challenge_panel">
