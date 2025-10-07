@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../App";
+import Markdown from "./Markdown";
 
 async function create(token, challenge) {}
 
 const ChallengePanel = ({account, instance, setInstance}) => {
 	const [challengeHash, setChallenge] = useState("");
+	const [readme, setReadme] = useState("");
 	const [challenges, setChallenges] = useState([]);
-
+	const [readmes, setReadmes] = useState([]);
 
 	useEffect(() => {
 		(async () => {
@@ -18,6 +20,10 @@ const ChallengePanel = ({account, instance, setInstance}) => {
 			}
 
 			setChallenges(data.challenges);
+			setReadmes(data.readmes);
+
+			setChallenge(data.challenges[0]);
+			setReadme(data.readmes[0]);
 		})();
 	}, []);
 
@@ -30,7 +36,12 @@ const ChallengePanel = ({account, instance, setInstance}) => {
 	const onChallengeChange = async (e) => {
 		setChallenge(e.target.value);
 
-		// TODO: Add challenge desc as sibling to <select>
+		for (let i = 0; i < challenges.length; i++) {
+			if (challenges[i] == e.target.value) {
+				setReadme(readmes[i]);
+				break;
+			}
+		}
 	};
 
 	const handleStart = async (e) => {
@@ -67,10 +78,15 @@ const ChallengePanel = ({account, instance, setInstance}) => {
 
 	return <div className="challenge_panel">
 		<div>
-			<select onChange={onChallengeChange} disabled={!!(instance.id)}>
-				{challenges.filter(x => x).map(x => <option key={x} value={x}>{x}</option>)}
-			</select>
-			{ !!(instance.id) ? <small>You already have a running instance</small> : null }
+			<div>
+				<select onChange={onChallengeChange} disabled={!!(instance.id)}>
+					{challenges.filter(x => x).map(x => <option key={x} value={x}>{x}</option>)}
+				</select>
+			</div>
+			{/* { !!(instance.id) ? <small>You already have a running instance</small> : null } */}
+			<div className="challenge_readme">
+				<Markdown content={readme} />
+			</div>
 		</div>
 		<div>
 			<form className="control_panel" onSubmit={e => e.preventDefault()}>
