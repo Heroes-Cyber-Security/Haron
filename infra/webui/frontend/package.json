@@ -1,0 +1,24 @@
+{
+  "name": "hcs-blockchain-infra-webui-frontend",
+  "version": "0.1.0",
+  "description": "Blockchain CTF infrastructure WebUI",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "author": "Hanz <hi@hanz.dev>",
+  "license": "MIT",
+  "dependencies": {
+    "animejs": "^3.2.2",
+    "axios": "^1.7.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react-swc": "^4.1.0",
+    "sass": "^1.80.6",
+    "vite": "^7.1.9"
+  }
+}

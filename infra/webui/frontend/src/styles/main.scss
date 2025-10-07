@@ -1,0 +1,191 @@
+:root {
+	color-scheme: dark;
+	font-size: 16px;
+	// --bg: radial-gradient(circle at bottom center, #080c15 0%, #070911 100%);
+	--bg: #060910;
+	--panel-bg: rgba(255, 255, 255, 0.03);
+	--surface: rgba(22, 29, 49, 0.78);
+	--surface-border: rgb(67, 107, 216);
+	--surface-shadow: rgba(23, 28, 49, 0.65);
+	--accent: #5e8cff;
+	--accent-soft: rgba(94, 140, 255, 0.12);
+	--text-primary: #f8fbff;
+	--text-secondary: rgba(189, 203, 255, 0.75);
+	--success: #6dd19c;
+	--error: #ff7a7a;
+
+	--element-gap: 1em;
+
+	--button-hover: rgb(255, 225, 27);
+	--button-active: rgb(151, 134, 22);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	background: var(--bg);
+	color: var(--text-primary);
+	-webkit-font-smoothing: antialiased;
+}
+
+#root {
+	height: 100vh;
+}
+
+input, select {
+	outline: none;
+	width: 100%;
+	padding: 1em;
+	font-family: inherit;
+	background: var(--surface-shadow);
+	border: none;
+	position: relative;
+	z-index: 1;
+
+	&[type=submit] {
+		&:hover {
+			background: var(--button-hover);
+			color: var(--bg);
+			z-index: 3;
+			outline: 0;
+		}
+
+		&:active {
+			background: var(--button-active);
+			color: var(--bg);
+			z-index: 3;
+			outline: 0;
+		}
+	}
+
+	&:focus {
+		outline: 1px solid var(--surface-border);
+	}
+}
+
+form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--element-gap);
+	justify-content: space-between;
+
+	> :first-child > .input-group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--element-gap);
+	}
+}
+
+.app {
+	width: 100%;
+	height: 100%;
+	display: flex;
+
+	align-items: center;
+	justify-content: center;
+}
+
+.launcher {
+	width: 75%;
+	height: 70%;
+
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 16px;
+
+	& > *{
+		background: var(--panel-bg);
+		padding: 1.5em;
+		position: relative;
+		overflow: hidden;
+
+		// consistent corner lengths and thickness so edges are even
+		$edge-length: 20px;
+		$edge-thickness: 2px;
+		$edge-offset: 0px;
+
+		/* subtle glow for the white edges */
+		box-shadow: 0 0 20px rgba(94,140,255,0.03), inset 0 0 12px rgba(255,255,255,0.02);
+		// transition: box-shadow 200ms ease, transform 150ms ease;
+
+		// ensure any inner content can layer independently of the decorative edges
+		> * {
+			position: relative;
+		}
+
+		// edges rendered in a pseudo element so they're visually on top
+		&::before {
+			content: "";
+			position: absolute;
+			inset: 0;
+			pointer-events: none;
+			z-index: 2;
+
+			background-image:
+				linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-left horizontal */
+				linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-left vertical */
+				linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-right horizontal */
+				linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-right vertical */
+				linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* bottom-left horizontal */
+				linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* bottom-left vertical */
+				linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* bottom-right horizontal */
+				linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)); /* bottom-right vertical */
+
+			background-repeat: no-repeat;
+			background-size:
+				$edge-length $edge-thickness, /* top-left horizontal */
+				$edge-thickness $edge-length, /* top-left vertical */
+				$edge-length $edge-thickness, /* top-right horizontal */
+				$edge-thickness $edge-length, /* top-right vertical */
+				$edge-length $edge-thickness, /* bottom-left horizontal */
+				$edge-thickness $edge-length, /* bottom-left vertical */
+				$edge-length $edge-thickness, /* bottom-right horizontal */
+				$edge-thickness $edge-length; /* bottom-right vertical */
+
+			background-position:
+				left $edge-offset top $edge-offset,    /* top-left horizontal */
+				left $edge-offset top $edge-offset,    /* top-left vertical */
+				right $edge-offset top $edge-offset,   /* top-right horizontal */
+				right $edge-offset top $edge-offset,   /* top-right vertical */
+				left $edge-offset bottom $edge-offset, /* bottom-left horizontal */
+				left $edge-offset bottom $edge-offset, /* bottom-left vertical */
+				right $edge-offset bottom $edge-offset,/* bottom-right horizontal */
+				right $edge-offset bottom $edge-offset;/* bottom-right vertical */
+		}
+
+		// &:hover {
+		// 	box-shadow: 0 6px 30px rgba(67,107,216,0.08), inset 0 0 18px rgba(255,255,255,0.04);
+		// 	transform: translateY(-4px);
+		// }
+	}
+    
+	& > .div1 {
+		grid-column: span 2 / span 2;
+		grid-row: span 3 / span 3;
+	}
+
+	& > .div2 {
+		grid-column: span 3 / span 3;
+		grid-row: span 2 / span 2;
+		grid-column-start: 3;
+	}
+
+	& > .div3 {
+		grid-column: span 3 / span 3;
+		grid-row: span 3 / span 3;
+		grid-column-start: 3;
+		grid-row-start: 3;
+	}
+
+	& > .div4 {
+		grid-column: span 2 / span 2;
+		grid-row: span 2 / span 2;
+		grid-row-start: 4;
+	}
+}
