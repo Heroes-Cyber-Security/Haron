@@ -7,10 +7,10 @@ import (
 	"github.com/ddo/rq"
 )
 
-var BASE = "http://orchestrator:8080"
+var ORCHESTRATOR_BASE = "http://orchestrator:8080"
 
 func Deploy(pea types.Pea) {
-	r := rq.Post(BASE + "/deploy/" + pea.Id)
+	r := rq.Post(ORCHESTRATOR_BASE + "/deploy/" + pea.Id)
 	req, err := r.ParseRequest()
 	if err != nil {
 		return
@@ -23,7 +23,7 @@ func Deploy(pea types.Pea) {
 }
 
 func Stop(pea types.Pea) {
-	r := rq.Post(BASE + "/stop/" + pea.Id)
+	r := rq.Post(ORCHESTRATOR_BASE + "/stop/" + pea.Id)
 	req, err := r.ParseRequest()
 	if err != nil {
 		return
