@@ -34,6 +34,9 @@ const ChallengePanel = ({account, instance, setInstance}) => {
 	};
 
 	const handleStart = async (e) => {
+		setInstance(x => ({
+			starting: true
+		}));
 		const res = await apiClient.post('/create', undefined, {
 			headers: {
 				Token: account.accessToken,
@@ -48,7 +51,14 @@ const ChallengePanel = ({account, instance, setInstance}) => {
 	}
 
 	const handleStop = async (e) => {
-		
+		if (!instance.id) return;
+
+		const res = apiClient.post('/stop', undefined, {
+			headers: {
+				Token: account.accessToken
+			}
+		});
+		setInstance(x => ({}));
 	}
 
 	const handleFlag = async (e) => {
@@ -57,15 +67,21 @@ const ChallengePanel = ({account, instance, setInstance}) => {
 
 	return <div className="challenge_panel">
 		<div>
-			<select onChange={onChallengeChange}>
+			<select onChange={onChallengeChange} disabled={!!(instance.id)}>
 				{challenges.filter(x => x).map(x => <option key={x} value={x}>{x}</option>)}
 			</select>
+			{ !!(instance.id) ? <small>You already have a running instance</small> : null }
 		</div>
 		<div>
 			<form className="control_panel" onSubmit={e => e.preventDefault()}>
-				<input type="submit" value="Start" onClick={handleStart} />
-				<input type="submit" value="Stop" onClick={handleStop} />
-				<input type="submit" value="Flag" onClick={handleFlag} />
+				<input
+					type="submit"
+					value={instance.starting ? "Starting..." : "Start"}
+					disabled={!!instance.id || !!instance.starting}
+					onClick={handleStart}
+				/>
+				<input type="submit" value="Stop" disabled={!instance.id} onClick={handleStop} />
+				<input type="submit" value="Flag" disabled={!instance.id} onClick={handleFlag} />
 			</form>
 		</div>
 	</div>;

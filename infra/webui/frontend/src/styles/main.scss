@@ -47,7 +47,7 @@ input, select {
 	position: relative;
 	z-index: 1;
 
-	&[type=submit] {
+	&[type=submit]:not([disabled]) {
 		&:hover {
 			background: var(--button-hover);
 			color: var(--bg);
@@ -214,7 +214,7 @@ form {
 		> input[type=submit] {
 			height: 5em;
 
-			&[value=Start] {
+			&[value=Start]:not([disabled]) {
 				// background: rgb(67, 152, 72);
 
 				&:hover {
@@ -227,7 +227,7 @@ form {
 				}
 			}
 
-			&[value=Stop] {
+			&[value=Stop]:not([disabled]) {
 				// background: rgb(152, 67, 67);
 
 				&:hover {
@@ -240,7 +240,7 @@ form {
 				}
 			}
 
-			&[value=Flag] {
+			&[value=Flag]:not([disabled]) {
 				// background: rgb(73, 67, 152);
 				// background: var(--button-hover);
 				// color: black;
