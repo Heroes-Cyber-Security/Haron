@@ -3,7 +3,7 @@ import { apiClient } from "../App";
 
 async function create(token, challenge) {}
 
-const ChallengePanel = ({account}) => {
+const ChallengePanel = ({account, instance, setInstance}) => {
 	const [challengeHash, setChallenge] = useState("");
 	const [challenges, setChallenges] = useState([]);
 
@@ -27,11 +27,33 @@ const ChallengePanel = ({account}) => {
 		</div>;
 	}
 
-	const onChallengeChange = async (e) => {};
+	const onChallengeChange = async (e) => {
+		setChallenge(e.target.value);
 
-	const handleControlPanel = async (e) => {
-		e.preventDefault();
+		// TODO: Add challenge desc as sibling to <select>
 	};
+
+	const handleStart = async (e) => {
+		const res = await apiClient.post('/create', undefined, {
+			headers: {
+				Token: account.accessToken,
+				Challenge: challengeHash
+			}
+		});
+
+		const data = res.data;
+		setInstance(x => ({
+			id: data.id
+		}));
+	}
+
+	const handleStop = async (e) => {
+		
+	}
+
+	const handleFlag = async (e) => {
+		
+	}
 
 	return <div className="challenge_panel">
 		<div>
@@ -40,10 +62,10 @@ const ChallengePanel = ({account}) => {
 			</select>
 		</div>
 		<div>
-			<form className="control_panel" onSubmit={handleControlPanel}>
-				<input type="submit" value="Start" />
-				<input type="submit" value="Stop" />
-				<input type="submit" value="Flag" />
+			<form className="control_panel" onSubmit={e => e.preventDefault()}>
+				<input type="submit" value="Start" onClick={handleStart} />
+				<input type="submit" value="Stop" onClick={handleStop} />
+				<input type="submit" value="Flag" onClick={handleFlag} />
 			</form>
 		</div>
 	</div>;
