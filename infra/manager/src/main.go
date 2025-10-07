@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"git.urbach.dev/go/web"
 	"github.com/google/uuid"
 
@@ -84,6 +86,23 @@ func main() {
 		integration.NotifyFlagTelegram(pea, playerIP, flag)
 
 		return Jsonify(ctx, map[string]any{"flag": flag})
+	})
+
+	s.Get("/challenges", func(ctx web.Context) error {
+		files, err := os.ReadDir("challenges")
+		if err != nil {
+			return Jsonify(ctx, map[string]any{"error": "FS: Error reading challenges"})
+		}
+
+		challenges := make([]string, len(files))
+		for i := range files {
+			f := files[i]
+			if f.IsDir() {
+				challenges = append(challenges, f.Name())
+			}
+		}
+
+		return Jsonify(ctx, map[string]any{"challenges": challenges})
 	})
 
 	// CTFd helpers
