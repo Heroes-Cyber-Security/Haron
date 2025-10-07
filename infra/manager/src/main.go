@@ -94,14 +94,23 @@ func main() {
 		}
 
 		challenges := make([]string, 0, len(files))
+		readmes := make([]string, 0, len(files))
 		for i := range files {
 			f := files[i]
 			if f.IsDir() {
-				challenges = append(challenges, f.Name())
+				dirname := f.Name()
+				challenges = append(challenges, dirname)
+
+				content, err := os.ReadFile("challenges/" + dirname + "/README.md")
+				if err != nil {
+					readmes = append(readmes, "")
+				} else {
+					readmes = append(readmes, string(content))
+				}
 			}
 		}
 
-		return Jsonify(c, map[string]any{"challenges": challenges})
+		return Jsonify(c, map[string]any{"challenges": challenges, "readmes": readmes})
 	})
 
 	// CTFd helpers
