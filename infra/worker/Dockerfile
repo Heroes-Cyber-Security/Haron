@@ -12,8 +12,8 @@ USER ctf
 WORKDIR /home/ctf
 
 RUN curl -fsSL https://pyenv.run | bash
-RUN /home/ctf/.pyenv/bin/pyenv install 3.13.1
-RUN /home/ctf/.pyenv/bin/pyenv global 3.13.1
+RUN /home/ctf/.pyenv/bin/pyenv install 3.14.0
+RUN /home/ctf/.pyenv/bin/pyenv global 3.14.0
 
 RUN curl -L https://foundry.paradigm.xyz | bash
 RUN /home/ctf/.foundry/bin/foundryup
