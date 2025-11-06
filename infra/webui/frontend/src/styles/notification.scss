@@ -1,0 +1,198 @@
+// Notification styles
+@keyframes pulseAlert {
+	0%, 100% {
+		background: var(--panel-bg);
+	}
+	50% {
+		background: rgba(109, 209, 156, 0.114);
+	}
+}
+
+@keyframes borderPulse {
+	0%, 100% {
+		opacity: 0.95;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+.notification_overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(0, 0, 0, 0.5);
+	backdrop-filter: blur(8px);
+	z-index: 999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.notification_modal {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: var(--panel-bg);
+	padding: 0;
+	min-width: 400px;
+	max-width: 90%;
+	z-index: 1000;
+	overflow: hidden;
+	animation: pulseAlert 2s ease-in-out infinite;
+
+	// Consistent corner lengths and thickness (inherited from panel styling)
+	$edge-length: 20px;
+	$edge-thickness: 1.5px;
+	$edge-offset: 0px;
+
+	// Edges rendered in a pseudo element (inherited from panel styling)
+	&::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		z-index: 10;
+		animation: borderPulse 2s ease-in-out infinite;
+
+		background-image:
+			linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-left horizontal */
+			linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-left vertical */
+			linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-right horizontal */
+			linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* top-right vertical */
+			linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* bottom-left horizontal */
+			linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* bottom-left vertical */
+			linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)), /* bottom-right horizontal */
+			linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.95)); /* bottom-right vertical */
+
+		background-repeat: no-repeat;
+		background-size:
+			$edge-length $edge-thickness, /* top-left horizontal */
+			$edge-thickness $edge-length, /* top-left vertical */
+			$edge-length $edge-thickness, /* top-right horizontal */
+			$edge-thickness $edge-length, /* top-right vertical */
+			$edge-length $edge-thickness, /* bottom-left horizontal */
+			$edge-thickness $edge-length, /* bottom-left vertical */
+			$edge-length $edge-thickness, /* bottom-right horizontal */
+			$edge-thickness $edge-length; /* bottom-right vertical */
+
+		background-position:
+			left $edge-offset top $edge-offset,    /* top-left horizontal */
+			left $edge-offset top $edge-offset,    /* top-left vertical */
+			right $edge-offset top $edge-offset,   /* top-right horizontal */
+			right $edge-offset top $edge-offset,   /* top-right vertical */
+			left $edge-offset bottom $edge-offset, /* bottom-left horizontal */
+			left $edge-offset bottom $edge-offset, /* bottom-left vertical */
+			right $edge-offset bottom $edge-offset,/* bottom-right horizontal */
+			right $edge-offset bottom $edge-offset;/* bottom-right vertical */
+	}
+
+	.notification_text {
+		padding: 2em;
+		position: relative;
+		z-index: 5;
+
+		// h3 {
+		// 	margin: 0 0 1em 0;
+		// 	color: var(--text-primary);
+		// 	font-size: 1.5rem;
+		// 	font-weight: 600;
+		// }
+
+		p {
+			margin: 0;
+			margin-top: 1em;
+			color: var(--text-secondary);
+			font-size: 1rem;
+			line-height: 1.5;
+			word-break: break-all;
+			font-family: 'JetBrains Mono', 'Fira Code', 'Source Code Pro', monospace;
+		}
+	}
+
+	.notification_actions {
+		display: flex;
+		gap: 0;
+		justify-content: stretch;
+
+		button {
+			padding: 1em 1.5em;
+			border: none;
+			font-family: inherit;
+			font-size: 1rem;
+			cursor: pointer;
+			// transition: all 150ms ease;
+			flex: 1;
+			height: 4em;
+			position: relative;
+
+			&.copy_button {
+				background: var(--success);
+				color: var(--bg);
+				font-weight: 500;
+
+				&:hover {
+					background: var(--button-hover);
+					// opacity: 0.2;
+				}
+
+				&:active {
+					background: var(--button-hover);
+				}
+			}
+
+			&.close_button {
+				background: var(--surface-opaque);
+				color: var(--text-primary);
+
+				&:hover {
+					background: var(--error);
+					color: var(--bg);
+				}
+
+				&:active {
+					background: var(--button-active);
+					color: var(--bg);
+				}
+			}
+		}
+	}
+
+	.notification_close {
+		padding: 1em 1.5em;
+		border: none;
+		font-family: inherit;
+		font-size: 1rem;
+		cursor: pointer;
+		transition: all 150ms ease;
+		background: var(--surface-opaque);
+		color: var(--text-primary);
+		height: 4em;
+		width: 100%;
+		position: relative;
+
+		&:hover {
+			background: var(--button-hover);
+			color: var(--bg);
+		}
+
+		&:active {
+			background: var(--button-active);
+			color: var(--bg);
+		}
+	}
+}
+
+@media (max-width: 480px) {
+	.notification_modal {
+		min-width: auto;
+		width: calc(100% - 2em);
+
+		.notification_text {
+			padding: 1.5em;
+		}
+	}
+}

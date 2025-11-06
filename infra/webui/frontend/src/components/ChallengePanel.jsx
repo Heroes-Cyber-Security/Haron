@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiClient } from "../App";
 import Markdown from "./Markdown";
+import Notification from "./Notification";
 
 async function create(token, challenge) {}
 
@@ -9,6 +10,7 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 	const [readme, setReadme] = useState("");
 	const [challenges, setChallenges] = useState([]);
 	const [readmes, setReadmes] = useState([]);
+	const [notification, setNotification] = useState({ message: "", isFlag: false });
 
 	useEffect(() => {
 		(async () => {
@@ -95,43 +97,72 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 			...x,
 			loading: false
 		}));
+
+		// Show flag notification
+		setNotification({
+			message: flag,
+			isFlag: true
+		});
 	}
 
-	return <div className="challenge_panel">
-		<div>
-			<div>
-				<select onChange={onChallengeChange} disabled={!!(instance.id)}>
-					{challenges.filter(x => x).map(x => <option key={x} value={x}>{x}</option>)}
-				</select>
+	const handleCopyFlag = async () => {
+		try {
+			await navigator.clipboard.writeText(notification.message);
+			// setNotification({ message: "", isFlag: false });
+		} catch (err) {
+			console.error('Failed to copy flag: ', err);
+		}
+	}
+
+	const handleCloseNotification = () => {
+		setNotification({ message: "", isFlag: false });
+	}
+
+	return (
+		<>
+			<div className="challenge_panel">
+				<div>
+					<div>
+						<select onChange={onChallengeChange} disabled={!!(instance.id)}>
+							{challenges.filter(x => x).map(x => <option key={x} value={x}>{x}</option>)}
+						</select>
+					</div>
+					{/* { !!(instance.id) ? <small>You already have a running instance</small> : null } */}
+					<div className="challenge_readme">
+						<Markdown content={readme} />
+					</div>
+				</div>
+				<div>
+					<form className="control_panel" onSubmit={e => e.preventDefault()}>
+						<input
+							type="submit"
+							value={instance.starting ? "Starting..." : "Start"}
+							disabled={!!instance.id || !!instance.starting}
+							onClick={handleStart}
+						/>
+						<input
+							type="submit"
+							value={instance.stopping ? "Stopping..." : "Stop"}
+							disabled={!instance.id || !!instance.stopping}
+							onClick={handleStop}
+						/>
+						<input
+							type="submit"
+							value={instance.loading ? "Fetching..." : "Flag"}
+							disabled={!instance.id || !!instance.loading}
+							onClick={handleFlag}
+						/>
+					</form>
+				</div>
 			</div>
-			{/* { !!(instance.id) ? <small>You already have a running instance</small> : null } */}
-			<div className="challenge_readme">
-				<Markdown content={readme} />
-			</div>
-		</div>
-		<div>
-			<form className="control_panel" onSubmit={e => e.preventDefault()}>
-				<input
-					type="submit"
-					value={instance.starting ? "Starting..." : "Start"}
-					disabled={!!instance.id || !!instance.starting}
-					onClick={handleStart}
-				/>
-				<input
-					type="submit"
-					value={instance.stopping ? "Stopping..." : "Stop"}
-					disabled={!instance.id || !!instance.stopping}
-					onClick={handleStop}
-				/>
-				<input
-					type="submit"
-					value={instance.loading ? "Fetching..." : "Flag"}
-					disabled={!instance.id || !!instance.loading}
-					onClick={handleFlag}
-				/>
-			</form>
-		</div>
-	</div>;
+			<Notification
+				message={notification.message}
+				isFlag={notification.isFlag}
+				onClose={handleCloseNotification}
+				onCopy={handleCopyFlag}
+			/>
+		</>
+	);
 };
 
 export default ChallengePanel;

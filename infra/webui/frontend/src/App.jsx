@@ -17,10 +17,6 @@ const App = () => {
 	const [flag, setFlag] = useState("");
 
 	useEffect(() => {
-		if (flag) alert(flag);
-	}, [flag]);
-
-	useEffect(() => {
 		if (account.name == undefined) setInstance({});
 	}, [account]);
 
