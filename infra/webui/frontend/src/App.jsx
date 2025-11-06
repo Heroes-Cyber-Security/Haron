@@ -20,6 +20,10 @@ const App = () => {
 		if (flag) alert(flag);
 	}, [flag]);
 
+	useEffect(() => {
+		if (account.name == undefined) setInstance({});
+	}, [account]);
+
 	return (
 		<div className="app">
 			<div className="launcher">
