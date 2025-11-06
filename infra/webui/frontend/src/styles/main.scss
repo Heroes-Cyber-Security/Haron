@@ -52,6 +52,10 @@ input, select {
 	border: none;
 	position: relative;
 
+	&[type=submit] {
+		height: 4em;
+	}
+
 	&[type=submit]:not([disabled]) {
 		&:hover {
 			background: var(--button-hover);
@@ -67,7 +71,8 @@ input, select {
 	}
 
 	&:focus {
-		outline: 1px solid var(--surface-border);
+		outline: 2px solid var(--text-primary);
+		outline-offset: -2px;
 	}
 }
 
@@ -95,8 +100,8 @@ form {
 }
 
 .launcher {
-	width: 95%;
-	max-width: 1200px;
+	width: 85%;
+	max-width: 1600px;
 
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -111,7 +116,7 @@ form {
 
 		// consistent corner lengths and thickness so edges are even
 		$edge-length: 20px;
-		$edge-thickness: 2px;
+		$edge-thickness: 1.5px;
 		$edge-offset: 0px;
 
 		/* subtle glow for the white edges */
@@ -352,8 +357,6 @@ form {
 		gap: 0;
 
 		> input[type=submit] {
-			height: 4em;
-
 			&[value=Start]:not([disabled]) {
 				// background: rgb(67, 152, 72);
 
