@@ -24,6 +24,7 @@
 
 * {
 	box-sizing: border-box;
+	font-family: inherit;
 }
 
 body {
@@ -33,6 +34,9 @@ body {
 	background: var(--bg);
 	color: var(--text-primary);
 	-webkit-font-smoothing: antialiased;
+	font-weight: 400;
+    letter-spacing: -0.02em;
+    text-rendering: optimizeLegibility;
 }
 
 #root {
@@ -111,7 +115,7 @@ form {
 		$edge-offset: 0px;
 
 		/* subtle glow for the white edges */
-		box-shadow: 0 0 20px rgba(94,140,255,0.03), inset 0 0 12px rgba(255,255,255,0.02);
+		// box-shadow: 0 0 20px rgba(94,140,255,0.03), inset 0 0 12px rgba(255,255,255,0.02);
 		// transition: box-shadow 200ms ease, transform 150ms ease;
 
 		// ensure any inner content can layer independently of the decorative edges
