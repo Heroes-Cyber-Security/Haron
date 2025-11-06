@@ -437,6 +437,8 @@ form {
 			display: flex;
 
 			> input[type=submit] {
+				padding-left: 2em;
+				padding-right: 2em;
 				width: max-content;
 			}
 		}
