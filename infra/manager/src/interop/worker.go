@@ -2,6 +2,8 @@ package interop
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -113,8 +115,23 @@ func DelegateJob(challengeHash string, pea types.Pea) {
 		return
 	}
 
-	uid := string(content)
+	var data map[string]interface{}
+	if err := json.Unmarshal(content, &data); err != nil {
+		log.Printf("interop: unable to decode response: %v", err)
+		return
+	}
+	uid := data["uid"].(string)
 	pea.WorkerJobUid = uid
+
+	// TODO: Create a util debug function to print special types such as JSON
+	if report, ok := data["report"]; ok {
+		reportJSON, err := json.MarshalIndent(report, "", "  ")
+		if err != nil {
+			log.Printf("interop: unable to marshal report: %v", err)
+		} else {
+			fmt.Println(string(reportJSON))
+		}
+	}
 }
 
 func StopJob(pea types.Pea) {
