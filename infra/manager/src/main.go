@@ -56,10 +56,18 @@ func main() {
 		}
 
 		if pea, ok := peas[accessToken]; ok {
+			// TODO: Be consistent. Id or Hash?
+			if pea.ChallengeId != challengeHash {
+				return Jsonify(c, map[string]any{"error": "Error: You have existing instance for another challenge"})
+			}
 			return Jsonify(c, map[string]any{"id": pea.Id})
 		}
 
-		pea := types.Pea{Id: uuid.NewString(), AccessToken: accessToken}
+		pea := types.Pea{
+			Id:          uuid.NewString(),
+			AccessToken: accessToken,
+			ChallengeId: challengeHash,
+		}
 		peas[accessToken] = pea
 
 		interop.DelegateJob(challengeHash, pea)
