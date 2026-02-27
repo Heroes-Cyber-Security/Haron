@@ -254,11 +254,11 @@ def validate(uid):
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
 
-    contract_address = job.report.get("anvilconfig", {}).get("contract_address")
-    if not contract_address:
-        return {"solved": False, "error": "Contract address not found"}
+    setup_address = job.report.get("anvilconfig", {}).get("setup_address")
+    if not setup_address:
+        return {"solved": False, "error": "Setup address not found"}
 
-    os.environ[CONTRACT_ADDRESS_KEY] = contract_address
+    os.environ[CONTRACT_ADDRESS_KEY] = setup_address
     os.environ["ANVIL_ENDPOINT"] = job.anvil_endpoint
 
     try:
