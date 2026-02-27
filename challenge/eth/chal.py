@@ -43,10 +43,7 @@ def deploy_contract(w3, abi, bytecode, account):
 def start() -> Dict:
     w3 = Web3(Web3.HTTPProvider(get_rpc_url()))
 
-    private_key = os.environ.get(
-        "PLAYER_PRIVATE_KEY",
-        "0xb8c57cf2245c23279965b2e833a099a38d4fbd30fbfd8605d39eb502b8159e7d",
-    )
+    private_key = os.environ["PLAYER_PRIVATE_KEY"]
     account = w3.eth.account.from_key(private_key)
 
     abi, bytecode = compile_contract()
