@@ -102,6 +102,7 @@ form {
 .launcher {
 	width: 85%;
 	max-width: 1600px;
+	height: calc(100vh - 4em);
 
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -342,6 +343,7 @@ form {
 	}
 
 	&.unauthorized {
+		max-height: none;
 		height: 100%;
 		display: flex;
 		align-items: center;
