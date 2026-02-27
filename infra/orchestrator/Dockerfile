@@ -14,7 +14,6 @@ RUN /home/ctf/.cargo/bin/rustup toolchain install 1.90.0
 
 # copy manifests first to cache dependency downloads
 COPY Cargo.toml Cargo.lock /home/ctf/
-RUN /home/ctf/.cargo/bin/cargo fetch --locked || /home/ctf/.cargo/bin/cargo fetch
 
 # copy rest and build release
 COPY .env /home/ctf/
