@@ -63,8 +63,17 @@ async fn spawn_supervised_node(config: anvil::NodeConfig, chain_id: u64) -> Eyre
     Ok(SingleNodeEntry { api, sender: command_tx, task: supervisor_task, chain_id })
 }
 
+#[derive(serde::Deserialize)]
+struct DeployQuery {
+    chains: Option<String>,
+}
+
 #[post("/deploy/{id}")]
-async fn service_deploy(state: web::Data<AppState>, params: web::Path<String>) -> impl Responder {
+async fn service_deploy(
+    state: web::Data<AppState>,
+    params: web::Path<String>,
+    query: web::Query<DeployQuery>,
+) -> impl Responder {
     let id = params.into_inner();
 
     {
@@ -74,26 +83,60 @@ async fn service_deploy(state: web::Data<AppState>, params: web::Path<String>) -
         }
     }
 
-    let config = anvil::create_config();
-    let entry = match spawn_supervised_node(config).await {
-        Ok(entry) => entry,
-        Err(err) => {
-            eprintln!("failed to spawn supervised anvil: {err:?}");
-            return "ERR";
+    let chain_ids: Vec<u64> = match query.chains.as_deref() {
+        Some(chains_str) => {
+            let mut ids: Vec<u64> = chains_str
+                .split(',')
+                .filter_map(|s| s.trim().parse().ok())
+                .collect();
+            if ids.is_empty() {
+                vec![1]
+            } else {
+                ids
+            }
         }
+        None => vec![1],
     };
+
+    let mut unique_check = std::collections::HashSet::new();
+    for id in &chain_ids {
+        if !unique_check.insert(*id) {
+            eprintln!("duplicate chainId detected: {id}");
+            return "DUPLICATE_CHAIN_ID";
+        }
+    }
+
+    let mut deployed_nodes: std::collections::HashMap<u64, SingleNodeEntry> =
+        std::collections::HashMap::new();
+
+    for chain_id in &chain_ids {
+        let config = anvil::create_config(*chain_id);
+        match spawn_supervised_node(config, *chain_id).await {
+            Ok(entry) => {
+                deployed_nodes.insert(*chain_id, entry);
+            }
+            Err(err) => {
+                eprintln!("failed to spawn supervised anvil for chain {chain_id}: {err:?}");
+                for (_, node) in deployed_nodes {
+                    node.shutdown().await;
+                }
+                trim_allocator();
+                return "ERR";
+            }
+        }
+    }
 
     let mut nodes = state.nodes.lock().await;
     if nodes.contains_key(&id) {
         drop(nodes);
-
-        entry.shutdown().await;
+        for (_, node) in deployed_nodes {
+            node.shutdown().await;
+        }
         trim_allocator();
-
         return "ALREADY_EXISTS";
     }
 
-    nodes.insert(id, entry);
+    nodes.insert(id, NodeEntry { nodes: deployed_nodes });
     drop(nodes);
 
     "OK"
