@@ -16,7 +16,9 @@ def start() -> Dict:
     account = w3.eth.account.from_key(private_key)
 
     # Build contract with forge
-    subprocess.run(["forge", "build"], check=True, capture_output=True)
+    subprocess.run(
+        ["/home/ctf/.foundry/bin/forge", "build"], check=True, capture_output=True
+    )
 
     # Read compiled artifact
     with open("out/Setup.sol/Setup.json", "r") as f:
