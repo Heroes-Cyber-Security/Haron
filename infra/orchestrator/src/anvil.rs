@@ -89,7 +89,7 @@ impl Drop for HeadlessNodeHandle {
 }
 
 /// Spawns an Anvil node without launching the HTTP/WS server tasks
-pub async fn try_spawn(mut config: NodeConfig) -> Result<(EthApi, HeadlessNodeHandle)> {
+pub async fn try_spawn(config: NodeConfig) -> Result<(EthApi, HeadlessNodeHandle)> {
     let (api, mut handle) = anvil::try_spawn(config).await?;
 
     if !handle.servers.is_empty() {
