@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import secrets
 import subprocess
 import sys
 import uuid
@@ -215,15 +216,25 @@ def delegate(h):
 
     print(f"Generated for {pea_id}: address={setup_address}")
 
+    deployer_key = "0x" + secrets.token_hex(32)
+    w3 = Web3(Web3.HTTPProvider(anvil_endpoints[0]))
+    deployer_account = w3.eth.account.from_key(deployer_key)
+    deployer_address = deployer_account.address
+
+    print(f"Generated deployer: address={deployer_address}")
+
     for endpoint in anvil_endpoints:
         try:
             fund_account(endpoint, setup_address)
+            fund_account(endpoint, deployer_address)
         except Exception as e:
             print(f"Warning: failed to fund account on {endpoint}: {e}")
 
     env = os.environ.copy()
     env["PLAYER_PRIVATE_KEY"] = private_key
     env["SETUP_ADDRESS"] = setup_address
+    env["DEPLOYER_PRIVATE_KEY"] = deployer_key
+    env["DEPLOYER_ADDRESS"] = deployer_address
     env["ANVIL_ENDPOINTS"] = json.dumps(anvil_endpoints)
     env["CHAIN_IDS"] = json.dumps(chain_ids)
 
