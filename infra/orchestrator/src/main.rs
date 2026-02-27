@@ -303,7 +303,7 @@ async fn forward_eth_json_rpc(
 }
 
 #[get("/anvil/{id}")]
-async fn forward_eth_json_rpc_ws(
+async fn forward_eth_json_rpc_ws_compat(
     state: web::Data<AppState>,
     params: web::Path<String>,
     req: HttpRequest,
@@ -314,12 +314,46 @@ async fn forward_eth_json_rpc_ws(
     let sender = {
         let nodes = state.nodes.lock().await;
         match nodes.get(&id) {
-            Some(node) => node.sender.clone(),
+            Some(node_entry) => {
+                let first_chain = node_entry.nodes.keys().min().copied();
+                match first_chain {
+                    Some(chain_id) => {
+                        match node_entry.nodes.get(&chain_id) {
+                            Some(node) => node.sender.clone(),
+                            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+                        }
+                    }
+                    None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+                }
+            }
             None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
         }
     };
 
     eth_ws::start_json_rpc_websocket(&req, payload, id, sender)
+}
+
+#[get("/anvil/{id}/{chain_id}")]
+async fn forward_eth_json_rpc_ws(
+    state: web::Data<AppState>,
+    params: web::Path<(String, u64)>,
+    req: HttpRequest,
+    payload: web::Payload,
+) -> Result<HttpResponse, actix_web::Error> {
+    let (id, chain_id) = params.into_inner();
+
+    let sender = {
+        let nodes = state.nodes.lock().await;
+        match nodes.get(&id) {
+            Some(node_entry) => match node_entry.nodes.get(&chain_id) {
+                Some(node) => node.sender.clone(),
+                None => return Ok(HttpResponse::NotFound().body("CHAIN_NOT_FOUND")),
+            },
+            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+        }
+    };
+
+    eth_ws::start_json_rpc_websocket(&req, payload, format!("{id}/{chain_id}"), sender)
 }
 
 fn process_rpc_request(api: anvil::EthApi, request: RpcRequest) -> types::RpcForwardResult {
