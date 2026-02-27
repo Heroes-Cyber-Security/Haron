@@ -378,7 +378,9 @@ async fn main() -> std::io::Result<()> {
             .service(service_deploy)
             .service(stop_node)
             .service(forward_eth_json_rpc)
+            .service(forward_eth_json_rpc_compat)
             .service(forward_eth_json_rpc_ws)
+            .service(forward_eth_json_rpc_ws_compat)
     })
     .bind("0.0.0.0:8080")?
     .run()
