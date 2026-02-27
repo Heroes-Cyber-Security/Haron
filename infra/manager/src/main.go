@@ -69,10 +69,17 @@ func main() {
 			})
 		}
 
+		config, err := types.LoadChallengeConfig(challengeHash)
+		if err != nil {
+			log.Printf("main: failed to load challenge config: %v", err)
+			return Jsonify(c, map[string]any{"error": "Failed to load challenge config"})
+		}
+
 		pea := types.Pea{
 			Id:            uuid.NewString(),
 			AccessToken:   accessToken,
 			ChallengeHash: challengeHash,
+			ChainIds:      config.GetChainIds(),
 		}
 
 		interop.Deploy(pea)
