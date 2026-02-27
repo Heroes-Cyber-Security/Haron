@@ -10,6 +10,14 @@ type Pea struct {
 	SetupAddress     string
 	PlayerPrivateKey string
 	ChainIds         []uint64
+	Chains           []ChainInfo
+}
+
+type ChainInfo struct {
+	ChainId      uint64 `json:"chainId"`
+	Name         string `json:"name"`
+	Rpc          string `json:"rpc"`
+	SetupAddress string `json:"setup_address"`
 }
 
 func (pea Pea) GetAnvilEndpoint() string {
