@@ -89,15 +89,23 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 			}
 		});
 		const data = res.data;
-		const flag = data.flag;
 
-		setFlag(flag);
 		setInstance(x => ({
 			...x,
 			loading: false
 		}));
 
-		// Show flag notification
+		if (data.error) {
+			setNotification({
+				message: data.error,
+				isFlag: false
+			});
+			return;
+		}
+
+		const flag = data.flag;
+		setFlag(flag);
+
 		setNotification({
 			message: flag,
 			isFlag: true
