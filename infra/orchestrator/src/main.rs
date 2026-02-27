@@ -4,6 +4,7 @@ mod supervisor;
 mod types;
 
 use eth::{http as eth_http, ws as eth_ws};
+use types::{NodeEntry, SingleNodeEntry};
 
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, Responder, get, post, web};
 use anvil_rpc::request::Request as RpcRequest;
@@ -27,36 +28,7 @@ impl AppState {
     }
 }
 
-struct NodeEntry {
-    api: anvil::EthApi,
-    sender: mpsc::Sender<supervisor::Command>,
-    task: JoinHandle<()>,
-}
-
-impl NodeEntry {
-    fn new(
-        api: anvil::EthApi,
-        sender: mpsc::Sender<supervisor::Command>,
-        task: JoinHandle<()>,
-    ) -> Self {
-        Self { api, sender, task }
-    }
-
-    async fn shutdown(self) {
-        let NodeEntry { api, sender, task } = self;
-        drop(api);
-        let (tx, rx) = oneshot::channel();
-        let _ = sender
-            .send(supervisor::Command::Shutdown {
-                respond_to: Some(tx),
-            })
-            .await;
-        let _ = rx.await;
-        let _ = task.await;
-    }
-}
-
-async fn spawn_supervised_node(config: anvil::NodeConfig) -> EyreResult<NodeEntry> {
+async fn spawn_supervised_node(config: anvil::NodeConfig, chain_id: u64) -> EyreResult<SingleNodeEntry> {
     let (command_tx, command_rx) = mpsc::channel(8);
     let supervisor_task = supervisor::spawn(command_rx, config);
 
@@ -88,7 +60,7 @@ async fn spawn_supervised_node(config: anvil::NodeConfig) -> EyreResult<NodeEntr
         .await
         .map_err(|_| eyre!("failed to receive api handle from supervisor"))?;
 
-    Ok(NodeEntry::new(api, command_tx, supervisor_task))
+    Ok(SingleNodeEntry { api, sender: command_tx, task: supervisor_task, chain_id })
 }
 
 #[post("/deploy/{id}")]
