@@ -2,7 +2,7 @@ from gevent import monkey
 
 monkey.patch_all()
 from copy import deepcopy
-from typing import Callable, Dict, Union
+from typing import Callable, Dict, Union, List
 
 from bottle import get, post, run, request, HTTPError
 from eth_listener import EthListener
@@ -36,18 +36,21 @@ class Report(object):
 class Job(object):
     uid: str
     task: str
-    anvil_endpoint: str
+    anvil_endpoints: List[str]
+    chain_ids: List[int]
     report: dict = {}
 
-    eth_listener: EthListener
+    eth_listeners: List[EthListener]
     new_heads_handler: Callable[..., None]
 
-    def __init__(self, uid, task, anvil_endpoint):
+    def __init__(self, uid, task, anvil_endpoints, chain_ids):
         self.uid = uid
         self.task = task
-        self.anvil_endpoint = anvil_endpoint
+        self.anvil_endpoints = anvil_endpoints
+        self.chain_ids = chain_ids
+        self.eth_listeners = []
 
-    def bind_handlers(self, cwd):
+    def bind_handlers(self, cwd, chain_id: int):
         module_name = f"chal_{self.uid}"
         module_path = os.path.join(cwd, "chal.py")
 
@@ -63,19 +66,55 @@ class Job(object):
         if not callable(handler):
             raise AttributeError("Expected callable 'on_new_block' in chal module")
 
-        self.new_heads_handler = handler
+        import inspect
+
+        sig = inspect.signature(handler)
+        param_count = len(sig.parameters)
+
+        if param_count == 0:
+
+            def wrapped_handler(event, cid=chain_id):
+                return handler()
+
+            self.new_heads_handler = wrapped_handler
+        elif param_count >= 2:
+
+            def wrapped_handler(event, cid=chain_id):
+                block_data = {
+                    "number": event.number,
+                    "hash": event.hash,
+                    "parentHash": event.parent_hash,
+                    "timestamp": event.timestamp,
+                    "miner": event.miner,
+                    "gasLimit": event.gas_limit,
+                    "gasUsed": event.gas_used,
+                    "baseFeePerGas": event.base_fee_per_gas,
+                }
+                return handler(cid, block_data)
+
+            self.new_heads_handler = wrapped_handler
+        else:
+
+            def wrapped_handler(event, cid=chain_id):
+                return handler(cid)
+
+            self.new_heads_handler = wrapped_handler
 
     async def start(self, cwd):
-        self.bind_handlers(cwd)
-
-        eth_listener = EthListener(self.anvil_endpoint)
-        eth_listener.on("newHeads", self.new_heads_handler)
+        for idx, (endpoint, chain_id) in enumerate(
+            zip(self.anvil_endpoints, self.chain_ids)
+        ):
+            self.bind_handlers(cwd, chain_id)
+            eth_listener = EthListener(endpoint)
+            eth_listener.on("newHeads", self.new_heads_handler)
+            self.eth_listeners.append(eth_listener)
 
     def to_dict(self):
         return {
             "uid": self.uid,
             "task": self.task,
-            "anvil_endpoint": self.anvil_endpoint,
+            "anvil_endpoints": self.anvil_endpoints,
+            "chain_ids": self.chain_ids,
             "report": self.report,
         }
 
@@ -138,13 +177,20 @@ def stop(jobid):
 @post("/delegate/:h")
 def delegate(h):
     """
-    /delegate/:h?anvil_endpoint=
+    /delegate/:h?anvil_endpoints=["http://...", "http://..."]
     """
     uid = str(uuid.uuid4())
     task_dir = os.path.join(BASE_CACHE_DIR, h)
-    anvil_endpoint = request.query["anvil_endpoint"]
 
-    jobs[uid] = Job(uid, h, anvil_endpoint)
+    anvil_endpoints_str = request.query.get("anvil_endpoints")
+    if anvil_endpoints_str:
+        anvil_endpoints = json.loads(anvil_endpoints_str)
+    else:
+        anvil_endpoints = [request.query["anvil_endpoint"]]
+
+    chain_ids = [int(ep.split("/")[-1]) for ep in anvil_endpoints]
+
+    jobs[uid] = Job(uid, h, anvil_endpoints, chain_ids)
 
     if h not in initialized:
         initialized.add(h)
@@ -164,20 +210,22 @@ def delegate(h):
             initialized.remove(h)
             return dict()
 
-    pea_id = extract_pea_id(anvil_endpoint)
+    pea_id = extract_pea_id(anvil_endpoints[0])
     private_key, setup_address = generate_key_from_id(pea_id)
 
     print(f"Generated for {pea_id}: address={setup_address}")
 
-    try:
-        fund_account(anvil_endpoint, setup_address)
-        print(f"Funded account {setup_address} successfully")
-    except Exception as e:
-        print(f"Warning: failed to fund account {setup_address}: {e}")
+    for endpoint in anvil_endpoints:
+        try:
+            fund_account(endpoint, setup_address)
+        except Exception as e:
+            print(f"Warning: failed to fund account on {endpoint}: {e}")
 
     env = os.environ.copy()
     env["PLAYER_PRIVATE_KEY"] = private_key
     env["SETUP_ADDRESS"] = setup_address
+    env["ANVIL_ENDPOINTS"] = json.dumps(anvil_endpoints)
+    env["CHAIN_IDS"] = json.dumps(chain_ids)
 
     python_executable = os.path.join(task_dir, ".venv", "bin", "python")
     script_path = os.path.join(task_dir, "chal.py")
@@ -259,7 +307,9 @@ def validate(uid):
         return {"solved": False, "error": "Setup address not found"}
 
     os.environ[CONTRACT_ADDRESS_KEY] = setup_address
-    os.environ["ANVIL_ENDPOINT"] = job.anvil_endpoint
+    os.environ["ANVIL_ENDPOINT"] = job.anvil_endpoints[0]
+    os.environ["ANVIL_ENDPOINTS"] = json.dumps(job.anvil_endpoints)
+    os.environ["CHAIN_IDS"] = json.dumps(job.chain_ids)
 
     try:
         solved = module.is_solved()
