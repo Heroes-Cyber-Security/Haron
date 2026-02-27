@@ -51,13 +51,13 @@ func NewWSForwarder(orchestratorBase *url.URL, dialer *websocket.Dialer, logger 
 
 // ServeHTTP upgrades the connection and bridges traffic to the orchestrator.
 func (wsp *WSForwarder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	id, ok := extractEthID(r.URL.Path)
+	id, chainId, ok := extractEthIDWithChain(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
 
-	targetURL := wsp.buildTargetURL(id)
+	targetURL := wsp.buildTargetURL(id, chainId)
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
@@ -128,10 +128,14 @@ func (wsp *WSForwarder) pipe(ctx context.Context, wg *sync.WaitGroup, src, dst *
 	}
 }
 
-func (wsp *WSForwarder) buildTargetURL(id string) *url.URL {
+func (wsp *WSForwarder) buildTargetURL(id string, chainId string) *url.URL {
 	wsURL := cloneURL(wsp.base)
 	wsURL.Scheme = toWebSocketScheme(wsURL.Scheme)
-	wsURL.Path = singleJoiningSlash(wsURL.Path, path.Join("anvil", id))
+	if chainId == "" {
+		wsURL.Path = singleJoiningSlash(wsURL.Path, path.Join("anvil", id))
+	} else {
+		wsURL.Path = singleJoiningSlash(wsURL.Path, path.Join("anvil", id, chainId))
+	}
 	return wsURL
 }
 
