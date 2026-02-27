@@ -166,25 +166,37 @@ async fn stop_node(state: web::Data<AppState>, params: web::Path<String>) -> imp
 }
 
 #[post("/anvil/{id}")]
-async fn forward_eth_json_rpc(
+async fn forward_eth_json_rpc_compat(
     state: web::Data<AppState>,
     params: web::Path<String>,
     body: web::Json<Value>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let id = params.into_inner();
+
+    let sender = {
+        let nodes = state.nodes.lock().await;
+        match nodes.get(&id) {
+            Some(node_entry) => {
+                let first_chain = node_entry.nodes.keys().min().copied();
+                match first_chain {
+                    Some(chain_id) => {
+                        match node_entry.nodes.get(&chain_id) {
+                            Some(node) => node.sender.clone(),
+                            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+                        }
+                    }
+                    None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+                }
+            }
+            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+        }
+    };
+
     let rpc_request: RpcRequest = match serde_json::from_value(body.into_inner()) {
         Ok(request) => request,
         Err(err) => {
             eprintln!("invalid json-rpc payload for {id}: {err}");
             return Ok(HttpResponse::BadRequest().body("INVALID_JSON_RPC"));
-        }
-    };
-
-    let sender = {
-        let nodes = state.nodes.lock().await;
-        match nodes.get(&id) {
-            Some(node) => node.sender.clone(),
-            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
         }
     };
 
@@ -211,6 +223,70 @@ async fn forward_eth_json_rpc(
         Ok(Ok(())) => {}
         Ok(Err(err)) => {
             eprintln!("supervisor execution error for {id}: {err:?}");
+            return Ok(HttpResponse::InternalServerError().body("RPC_EXECUTION_FAILED"));
+        }
+        Err(_) => return Ok(HttpResponse::InternalServerError().body("SUPERVISOR_DROPPED")),
+    }
+
+    let response = response_rx
+        .await
+        .map_err(|_| actix_web::error::ErrorInternalServerError("MISSING_RPC_RESPONSE"))?;
+
+    match response {
+        Some(payload) => Ok(HttpResponse::Ok().json(payload)),
+        None => Ok(HttpResponse::NoContent().finish()),
+    }
+}
+
+#[post("/anvil/{id}/{chain_id}")]
+async fn forward_eth_json_rpc(
+    state: web::Data<AppState>,
+    params: web::Path<(String, u64)>,
+    body: web::Json<Value>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let (id, chain_id) = params.into_inner();
+    let rpc_request: RpcRequest = match serde_json::from_value(body.into_inner()) {
+        Ok(request) => request,
+        Err(err) => {
+            eprintln!("invalid json-rpc payload for {id}/{chain_id}: {err}");
+            return Ok(HttpResponse::BadRequest().body("INVALID_JSON_RPC"));
+        }
+    };
+
+    let sender = {
+        let nodes = state.nodes.lock().await;
+        match nodes.get(&id) {
+            Some(node_entry) => match node_entry.nodes.get(&chain_id) {
+                Some(node) => node.sender.clone(),
+                None => return Ok(HttpResponse::NotFound().body("CHAIN_NOT_FOUND")),
+            },
+            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+        }
+    };
+
+    let (response_tx, response_rx) = oneshot::channel();
+    let job_request = rpc_request.clone();
+    let job = Box::new(move |api: anvil::EthApi| -> EyreResult<()> {
+        let response = process_rpc_request(api, job_request);
+        response_tx
+            .send(response)
+            .map_err(|_| eyre!("http layer dropped response channel"))?;
+        Ok(())
+    });
+
+    let (ack_tx, ack_rx) = oneshot::channel();
+    sender
+        .send(supervisor::Command::Execute {
+            job,
+            respond_to: Some(ack_tx),
+        })
+        .await
+        .map_err(|_| actix_web::error::ErrorInternalServerError("SUPERVISOR_UNAVAILABLE"))?;
+
+    match ack_rx.await {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => {
+            eprintln!("supervisor execution error for {id}/{chain_id}: {err:?}");
             return Ok(HttpResponse::InternalServerError().body("RPC_EXECUTION_FAILED"));
         }
         Err(_) => return Ok(HttpResponse::InternalServerError().body("SUPERVISOR_DROPPED")),
