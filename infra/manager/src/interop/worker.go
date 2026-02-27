@@ -16,6 +16,21 @@ import (
 	"github.com/ddo/rq"
 )
 
+type AnvilConfig struct {
+	ContractAddress  string `json:"contract_address"`
+	SetupAddress     string `json:"setup_address"`
+	PlayerPrivateKey string `json:"player_private_key"`
+}
+
+type Report struct {
+	AnvilConfig AnvilConfig `json:"anvilconfig"`
+}
+
+type DelegateResponse struct {
+	Uid    string `json:"uid"`
+	Report Report `json:"report"`
+}
+
 func ChallengeExists(challengeHash string) bool {
 	r := rq.Get("http://worker:8080/package/" + challengeHash)
 	req, err := r.ParseRequest()
@@ -115,22 +130,18 @@ func DelegateJob(challengeHash string, pea types.Pea) {
 		return
 	}
 
-	var data map[string]interface{}
-	if err := json.Unmarshal(content, &data); err != nil {
+	var resp DelegateResponse
+	if err := json.Unmarshal(content, &resp); err != nil {
 		log.Printf("interop: unable to decode response: %v", err)
 		return
 	}
-	uid := data["uid"].(string)
-	pea.WorkerJobUid = uid
 
-	// TODO: Create a util debug function to print special types such as JSON
-	if report, ok := data["report"]; ok {
-		reportJSON, err := json.MarshalIndent(report, "", "  ")
-		if err != nil {
-			log.Printf("interop: unable to marshal report: %v", err)
-		} else {
-			fmt.Println(string(reportJSON))
-		}
+	pea.WorkerJobUid = resp.Uid
+	pea.SetupAddress = resp.Report.AnvilConfig.SetupAddress
+	pea.PlayerPrivateKey = resp.Report.AnvilConfig.PlayerPrivateKey
+
+	if resp.Report.AnvilConfig.ContractAddress != "" {
+		log.Printf("interop: contract deployed at %s", resp.Report.AnvilConfig.ContractAddress)
 	}
 }
 
