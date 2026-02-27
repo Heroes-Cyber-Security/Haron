@@ -56,8 +56,7 @@ func main() {
 		}
 
 		if pea, ok := peas[accessToken]; ok {
-			// TODO: Be consistent. Id or Hash?
-			if pea.ChallengeId != challengeHash {
+			if pea.ChallengeHash != challengeHash {
 				return Jsonify(c, map[string]any{"error": "Error: You have existing instance for another challenge"})
 			}
 			return Jsonify(c, map[string]any{"id": pea.Id})
@@ -66,7 +65,7 @@ func main() {
 		pea := types.Pea{
 			Id:          uuid.NewString(),
 			AccessToken: accessToken,
-			ChallengeId: challengeHash,
+			ChallengeHash: challengeHash,
 		}
 		peas[accessToken] = pea
 

@@ -1,8 +1,8 @@
 package types
 
 type Pea struct {
-	Id           string
-	ChallengeId  string
+	Id          string
+	ChallengeHash string
 	AccessToken  string
 	WorkerJobUid string
 }
