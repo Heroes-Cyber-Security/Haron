@@ -7,6 +7,7 @@ from typing import Callable, Dict, Union
 from bottle import get, post, run, request, HTTPError
 from eth_listener import EthListener
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -15,6 +16,9 @@ import sys
 import uuid
 import venv
 import zipfile
+from urllib.parse import urlparse
+
+from web3 import Web3
 
 BASE_CACHE_DIR = "/home/ctf/cache"
 CONTRACT_ADDRESS_KEY = "OWNABLE_CONTRACT_ADDRESS"
@@ -78,6 +82,32 @@ class Job(object):
         }
 
 
+def generate_key_from_id(
+    pea_id: str, salt: str = "harondynamicsalt2025"
+) -> tuple[str, str]:
+    """Generate deterministic private key and address from Pea ID"""
+    seed = hashlib.sha256((pea_id + salt).encode()).digest()
+    private_key = seed.hex()
+    w3 = Web3()
+    account = w3.eth.account.from_key(private_key)
+    return private_key, account.address
+
+
+def fund_account(anvil_endpoint: str, address: str, amount_ether: float = 10000):
+    """Fund account via Anvil cheat code"""
+    w3_anvil = Web3(Web3.HTTPProvider(anvil_endpoint))
+    w3_anvil.provider.make_request(
+        "anvil_setBalance", [address, hex(w3_anvil.to_wei(amount_ether, "ether"))]
+    )
+
+
+def extract_pea_id(anvil_endpoint: str) -> str:
+    """Extract Pea ID from anvil endpoint URL"""
+    parsed = urlparse(anvil_endpoint)
+    path_parts = parsed.path.strip("/").split("/")
+    return path_parts[-1] if path_parts else ""
+
+
 def generate_report(cwd) -> Union[dict, Report]:
     """
     Note to myself: an empty report does nothing, a non-empty report overwrites settings
@@ -114,8 +144,9 @@ def delegate(h):
     """
     uid = str(uuid.uuid4())
     task_dir = os.path.join(BASE_CACHE_DIR, h)
+    anvil_endpoint = request.query["anvil_endpoint"]
 
-    jobs[uid] = Job(uid, h, request.query["anvil_endpoint"])
+    jobs[uid] = Job(uid, h, anvil_endpoint)
 
     if h not in initialized:
         initialized.add(h)
@@ -135,7 +166,34 @@ def delegate(h):
             initialized.remove(h)
             return dict()
 
-    jobs[uid].report = deepcopy(generate_report(task_dir))
+    pea_id = extract_pea_id(anvil_endpoint)
+    private_key, setup_address = generate_key_from_id(pea_id)
+    fund_account(anvil_endpoint, setup_address)
+
+    env = os.environ.copy()
+    env["PLAYER_PRIVATE_KEY"] = private_key
+    env["SETUP_ADDRESS"] = setup_address
+
+    python_executable = os.path.join(task_dir, ".venv", "bin", "python")
+    script_path = os.path.join(task_dir, "chal.py")
+    result = subprocess.run(
+        [python_executable, script_path],
+        cwd=task_dir,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    content = result.stdout or ""
+    if content.strip():
+        jobs[uid].report = json.loads(content)
+    else:
+        jobs[uid].report = Report()
+
+    if isinstance(jobs[uid].report, dict):
+        if "anvilconfig" not in jobs[uid].report:
+            jobs[uid].report["anvilconfig"] = {}
+        jobs[uid].report["anvilconfig"]["setup_address"] = setup_address
+        jobs[uid].report["anvilconfig"]["player_private_key"] = private_key
 
     job_dict = jobs[uid].to_dict()
     return job_dict
