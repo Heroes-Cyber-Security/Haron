@@ -3,8 +3,6 @@ import { apiClient } from "../App";
 import Markdown from "./Markdown";
 import Notification from "./Notification";
 
-async function create(token, challenge) {}
-
 const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 	const [challengeHash, setChallenge] = useState("");
 	const [readme, setReadme] = useState("");
