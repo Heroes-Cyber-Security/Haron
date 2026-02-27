@@ -35,7 +35,7 @@ func sendMessage(text string) {
 }
 
 func notifyTelegram(pea types.Pea, playerIP, event, extraInfo string) {
-	challengeName := mustGetEnv("CHALLENGE_NAME")
+	challengeName := ResolveChallengeName(pea.ChallengeHash)
 
 	playerName := CTFDGetMe(pea).Name
 	format := "<code>%s</code> (<code>%s</code>) %s <code>%s</code>\n%s<code>%s</code>"
