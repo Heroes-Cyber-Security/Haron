@@ -8,9 +8,9 @@ author = "Hanz <hi@hanz.dev>"
 actix = "0.13"
 actix-web = "4.11.0"
 actix-web-actors = "4.3"
-anvil = { git = "https://github.com/foundry-rs/foundry", version = "1.5.1", rev = "b0a9dd9ceda36f63e2326ce530c10e6916f4b8a2" }
-anvil-core = { git = "https://github.com/foundry-rs/foundry", version = "1.5.1", rev = "b0a9dd9ceda36f63e2326ce530c10e6916f4b8a2" }
-anvil-rpc = { git = "https://github.com/foundry-rs/foundry", version = "1.5.1", rev = "b0a9dd9ceda36f63e2326ce530c10e6916f4b8a2" }
+anvil = { git = "https://github.com/foundry-rs/foundry", version = "1.5.1", rev = "0cb553dcbded54464433cbc6fadd187ccd740ee4" }
+anvil-core = { git = "https://github.com/foundry-rs/foundry", version = "1.5.1", rev = "0cb553dcbded54464433cbc6fadd187ccd740ee4" }
+anvil-rpc = { git = "https://github.com/foundry-rs/foundry", version = "1.5.1", rev = "0cb553dcbded54464433cbc6fadd187ccd740ee4" }
 eyre = "0.6"
 tokio = { version = "1", features = ["sync"] }
 libc = "0.2"
