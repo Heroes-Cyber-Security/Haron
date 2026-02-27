@@ -13,7 +13,7 @@ pragma solidity ^0.8.0;
 contract Setup {
 	constructor() {}
 
-	function isSolved() view returns (bool) {
+	function isSolved() public view returns (bool) {
 		return true;
 	}
 }
