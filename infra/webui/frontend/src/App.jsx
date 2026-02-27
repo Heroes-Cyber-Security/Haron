@@ -11,7 +11,6 @@ export const apiClient = axios.create({
 });
 
 const App = () => {
-	const [status, setStatus] = useState({loading: true, error: null, data: null});
 	const [account, setAccount] = useState({name: "", accessToken: ""});
 	const [instance, setInstance] = useState({id: ""});
 	const [flag, setFlag] = useState("");
