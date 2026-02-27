@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 
@@ -86,6 +88,33 @@ func main() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized: Access Token"})
 		} else if !ok {
 			return Jsonify(c, map[string]any{"error": "Unauthorized: Instance does not exists"})
+		}
+
+		res, err := http.Get("http://worker:8080/validate/" + pea.WorkerJobUid)
+		if err != nil {
+			return Jsonify(c, map[string]any{"error": "Validation service unavailable"})
+		}
+		defer res.Body.Close()
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return Jsonify(c, map[string]any{"error": "Validation read failed"})
+		}
+
+		var validation struct {
+			Solved bool   `json:"solved"`
+			Error  string `json:"error"`
+		}
+		if err := json.Unmarshal(body, &validation); err != nil {
+			return Jsonify(c, map[string]any{"error": "Validation parse failed"})
+		}
+
+		if !validation.Solved {
+			errMsg := "Challenge not solved"
+			if validation.Error != "" {
+				errMsg = validation.Error
+			}
+			return Jsonify(c, map[string]any{"error": errMsg})
 		}
 
 		flag := GenerateFlag(pea)
