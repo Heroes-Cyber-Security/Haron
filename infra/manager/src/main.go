@@ -75,7 +75,11 @@ func main() {
 		}
 
 		interop.Deploy(pea)
-		interop.DelegateJob(challengeHash, pea)
+		if err := interop.DelegateJob(challengeHash, &pea); err != nil {
+			log.Printf("main: DelegateJob failed: %v", err)
+			delete(peas, accessToken)
+			return Jsonify(c, map[string]any{"error": err.Error()})
+		}
 
 		peas[accessToken] = pea
 

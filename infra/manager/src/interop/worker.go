@@ -3,6 +3,7 @@ package interop
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -107,7 +108,7 @@ func UploadChallenge(challengeHash string) {
 	}
 }
 
-func DelegateJob(challengeHash string, pea types.Pea) {
+func DelegateJob(challengeHash string, pea *types.Pea) error {
 	if !ChallengeExists(challengeHash) {
 		UploadChallenge(challengeHash)
 	}
@@ -115,26 +116,25 @@ func DelegateJob(challengeHash string, pea types.Pea) {
 	r := rq.Post("http://worker:8080/delegate/" + challengeHash + "?anvil_endpoint=" + url.QueryEscape(pea.GetAnvilEndpoint()))
 	req, err := r.ParseRequest()
 	if err != nil {
-		return
+		return fmt.Errorf("failed to parse request: %w", err)
 	}
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return
+		return fmt.Errorf("worker request failed: %w", err)
 	}
 	defer res.Body.Close()
 
 	content, err := io.ReadAll(res.Body)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to read response: %w", err)
 	}
 
 	log.Printf("interop: raw worker response: %s", string(content))
 
 	var resp DelegateResponse
 	if err := json.Unmarshal(content, &resp); err != nil {
-		log.Printf("interop: unable to decode response: %v", err)
-		return
+		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	pea.WorkerJobUid = resp.Uid
@@ -146,6 +146,12 @@ func DelegateJob(challengeHash string, pea types.Pea) {
 	if resp.Report.AnvilConfig.ContractAddress != "" {
 		log.Printf("interop: contract deployed at %s", resp.Report.AnvilConfig.ContractAddress)
 	}
+
+	if pea.SetupAddress == "" || pea.PlayerPrivateKey == "" {
+		return fmt.Errorf("worker returned empty setup_address or player_private_key")
+	}
+
+	return nil
 }
 
 func StopJob(pea types.Pea) {
