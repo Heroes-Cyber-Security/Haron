@@ -62,11 +62,15 @@ func main() {
 			if pea.ChallengeHash != challengeHash {
 				return Jsonify(c, map[string]any{"error": "Error: You have existing instance for another challenge"})
 			}
-			return Jsonify(c, map[string]any{
+			response := map[string]any{
 				"id":                 pea.Id,
 				"setup_address":      pea.SetupAddress,
 				"player_private_key": pea.PlayerPrivateKey,
-			})
+			}
+			if len(pea.Chains) > 1 {
+				response["chains"] = pea.Chains
+			}
+			return Jsonify(c, response)
 		}
 
 		config, err := types.LoadChallengeConfig(challengeHash)
@@ -93,11 +97,17 @@ func main() {
 
 		integration.NotifyPeaCreationTelegram(pea, playerIP)
 
-		return Jsonify(c, map[string]any{
+		response := map[string]any{
 			"id":                 pea.Id,
 			"setup_address":      pea.SetupAddress,
 			"player_private_key": pea.PlayerPrivateKey,
-		})
+		}
+
+		if len(pea.Chains) > 1 {
+			response["chains"] = pea.Chains
+		}
+
+		return Jsonify(c, response)
 	})
 
 	e.GET("/flag", func(c echo.Context) error {
