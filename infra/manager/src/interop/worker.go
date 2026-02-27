@@ -16,10 +16,18 @@ import (
 	"github.com/ddo/rq"
 )
 
+type ChainReport struct {
+	ChainId      uint64 `json:"chainId"`
+	Name         string `json:"name"`
+	Rpc          string `json:"rpc"`
+	SetupAddress string `json:"setup_address"`
+}
+
 type AnvilConfig struct {
-	ContractAddress  string `json:"contract_address"`
-	SetupAddress     string `json:"setup_address"`
-	PlayerPrivateKey string `json:"player_private_key"`
+	ContractAddress  string        `json:"contract_address"`
+	SetupAddress     string        `json:"setup_address"`
+	PlayerPrivateKey string        `json:"player_private_key"`
+	Chains           []ChainReport `json:"chains,omitempty"`
 }
 
 type Report struct {
@@ -144,6 +152,21 @@ func DelegateJob(challengeHash string, pea *types.Pea) error {
 	pea.WorkerJobUid = resp.Uid
 	pea.SetupAddress = resp.Report.AnvilConfig.SetupAddress
 	pea.PlayerPrivateKey = resp.Report.AnvilConfig.PlayerPrivateKey
+
+	if len(resp.Report.AnvilConfig.Chains) > 0 {
+		pea.Chains = make([]types.ChainInfo, len(resp.Report.AnvilConfig.Chains))
+		for i, chain := range resp.Report.AnvilConfig.Chains {
+			pea.Chains[i] = types.ChainInfo{
+				ChainId:      chain.ChainId,
+				Name:         chain.Name,
+				Rpc:          chain.Rpc,
+				SetupAddress: chain.SetupAddress,
+			}
+		}
+		if pea.SetupAddress == "" {
+			pea.SetupAddress = pea.Chains[0].SetupAddress
+		}
+	}
 
 	log.Printf("interop: parsed uid=%s, setup_address=%s", resp.Uid, resp.Report.AnvilConfig.SetupAddress)
 
