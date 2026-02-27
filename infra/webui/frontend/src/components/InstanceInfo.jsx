@@ -4,8 +4,8 @@ const BASE_RPC_URL = import.meta.env.VITE_RPC_BASE_URL ?? `http://${window.locat
 
 const InstanceInfo = ({instance}) => {
 	const rpcUrl = BASE_RPC_URL + "/eth/" + (instance.id ?? "");
-	const setupAddress = "0x87B45dA8b51b7612Cb7b44b267f01860d4fF43bC";
-	const playerPrivateKey = "0xb8c57cf2245c23279965b2e833a099a38d4fbd30fbfd8605d39eb502b8159e7d";
+	const setupAddress = instance.setup_address ?? "";
+	const playerPrivateKey = instance.player_private_key ?? "";
 
 	return <div className="instance_container" disabled={!instance.id} >
 		<div className="instance_header">
