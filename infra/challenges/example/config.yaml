@@ -1,0 +1,1 @@
+flag_template: "flag{example_solved_%>HASH<%}"
