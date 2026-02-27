@@ -1,4 +1,47 @@
 from typing import Dict, Optional, Tuple
+import json
+import os
+import subprocess
+from web3 import Web3
+
+
+def start() -> Dict:
+    """
+    Deploy the Setup contract and return its address
+    """
+    anvil_endpoint = os.environ.get("ANVIL_ENDPOINT", "http://localhost:8545")
+    private_key = os.environ["PLAYER_PRIVATE_KEY"]
+
+    w3 = Web3(Web3.HTTPProvider(anvil_endpoint))
+    account = w3.eth.account.from_key(private_key)
+
+    # Build contract with forge
+    subprocess.run(["forge", "build"], check=True, capture_output=True)
+
+    # Read compiled artifact
+    with open("out/Setup.sol/Setup.json", "r") as f:
+        artifact = json.load(f)
+
+    bytecode = artifact["deployedBytecode"]["object"]
+    abi = artifact["abi"]
+
+    # Deploy contract
+    contract_factory = w3.eth.contract(abi=abi, bytecode=bytecode)
+    tx = contract_factory.constructor().build_transaction(
+        {
+            "from": account.address,
+            "nonce": w3.eth.get_transaction_count(account.address),
+            "gas": 2000000,
+            "gasPrice": w3.eth.gas_price,
+        }
+    )
+    signed = account.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+    result = {"anvilconfig": {"contract_address": receipt.contractAddress}}
+    print(json.dumps(result))
+    return result
 
 
 def precompile() -> Dict:
