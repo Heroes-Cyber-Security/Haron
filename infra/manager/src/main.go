@@ -69,13 +69,13 @@ func main() {
 		}
 
 		pea := types.Pea{
-			Id:          uuid.NewString(),
-			AccessToken: accessToken,
+			Id:            uuid.NewString(),
+			AccessToken:   accessToken,
 			ChallengeHash: challengeHash,
 		}
 
-		interop.DelegateJob(challengeHash, pea)
 		interop.Deploy(pea)
+		interop.DelegateJob(challengeHash, pea)
 
 		peas[accessToken] = pea
 

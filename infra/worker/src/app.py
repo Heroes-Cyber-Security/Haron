@@ -168,7 +168,11 @@ def delegate(h):
 
     pea_id = extract_pea_id(anvil_endpoint)
     private_key, setup_address = generate_key_from_id(pea_id)
-    fund_account(anvil_endpoint, setup_address)
+
+    try:
+        fund_account(anvil_endpoint, setup_address)
+    except Exception as e:
+        print(f"Warning: failed to fund account {setup_address}: {e}")
 
     env = os.environ.copy()
     env["PLAYER_PRIVATE_KEY"] = private_key
