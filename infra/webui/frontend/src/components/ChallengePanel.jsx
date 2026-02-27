@@ -58,7 +58,10 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 
 		const data = res.data;
 		setInstance(x => ({
-			id: data.id
+			...x,
+			id: data.id,
+			setup_address: data.setup_address,
+			player_private_key: `0x${data.player_private_key}`
 		}));
 	}
 
