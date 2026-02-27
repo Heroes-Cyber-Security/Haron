@@ -12,7 +12,7 @@ export const apiClient = axios.create({
 
 const App = () => {
 	const [account, setAccount] = useState({name: "", accessToken: ""});
-	const [instance, setInstance] = useState({id: ""});
+	const [instance, setInstance] = useState({id: "", chains: []});
 	const [flag, setFlag] = useState("");
 
 	useEffect(() => {
