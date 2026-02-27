@@ -1,5 +1,5 @@
-$(cd manager && ./build.sh)
-$(cd worker && ./build.sh)
+cd manager && ./build.sh && cd ..
+cd worker && ./build.sh && cd ..
 
-docker compose up
+docker compose up --build
 docker compose down
