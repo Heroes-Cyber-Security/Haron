@@ -57,37 +57,32 @@ def deploy_contract(
 def start() -> Dict:
     endpoints = json.loads(os.environ["ANVIL_ENDPOINTS"])
     chain_ids = json.loads(os.environ["CHAIN_IDS"])
-    private_key = os.environ["PLAYER_PRIVATE_KEY"]
+    deployer_key = os.environ["DEPLOYER_PRIVATE_KEY"]
 
-    contracts = []
+    chains = []
 
     for endpoint, chain_id in zip(endpoints, chain_ids):
         w3 = Web3(Web3.HTTPProvider(endpoint))
 
-        token_address = deploy_contract(
-            w3, private_key, "src/Token.sol", constructor_args=[1000000]
+        setup_address = deploy_contract(
+            w3, deployer_key, "src/Setup.sol", constructor_args=[]
         )
 
-        bridge_address = deploy_contract(
-            w3,
-            private_key,
-            "src/Bridge.sol",
-            constructor_args=[
-                token_address,
-                w3.eth.account.from_key(private_key).address,
-            ],
-        )
-
-        contracts.append(
+        chains.append(
             {
-                "rpc": endpoint,
                 "chainId": chain_id,
-                "bridge": bridge_address,
-                "token": token_address,
+                "name": f"Chain {chain_id}",
+                "rpc": endpoint,
+                "setup_address": setup_address,
             }
         )
 
-    result = {"anvilconfig": {"chains": contracts, "player_private_key": private_key}}
+    result = {
+        "anvilconfig": {
+            "chains": chains,
+            "player_private_key": os.environ["PLAYER_PRIVATE_KEY"],
+        }
+    }
 
     print(json.dumps(result))
     return result
@@ -102,18 +97,10 @@ def is_solved() -> bool:
     for endpoint, chain_id in zip(endpoints, chain_ids):
         w3 = Web3(Web3.HTTPProvider(endpoint))
 
-        with open("out/src/Bridge.sol/SignatureReplayBridge.json", "r") as f:
+        with open("out/src/Setup.sol/Setup.json", "r") as f:
             artifact = json.load(f)
 
-        bridge_abi = artifact["abi"]
-
-        with open("out/src/Bridge.sol/SignatureReplayBridge.json", "r") as f:
-            artifact = json.load(f)
-
-        bridge_address_file = f"out/src/Bridge.sol/SignatureReplayBridge.json"
-
-        import glob
-        import os.path
+        setup_abi = artifact["abi"]
 
         cache_dir = f"/home/ctf/cache"
         challenge_dirs = [
@@ -122,7 +109,7 @@ def is_solved() -> bool:
             if os.path.isdir(os.path.join(cache_dir, d))
         ]
 
-        bridge_address = None
+        setup_address = None
         for challenge_dir in challenge_dirs:
             try:
                 report_path = os.path.join(cache_dir, challenge_dir, "report.json")
@@ -132,14 +119,21 @@ def is_solved() -> bool:
                         chains = report.get("anvilconfig", {}).get("chains", [])
                         for chain in chains:
                             if chain.get("chainId") == chain_id:
-                                bridge_address = chain.get("bridge")
+                                setup_address = chain.get("setup_address")
                                 break
             except:
                 continue
 
-        if not bridge_address:
+        if not setup_address:
             continue
 
+        setup_contract = w3.eth.contract(address=setup_address, abi=setup_abi)
+        bridge_address = setup_contract.functions.BRIDGE().call()
+
+        with open("out/src/Bridge.sol/SignatureReplayBridge.json", "r") as f:
+            bridge_artifact = json.load(f)
+
+        bridge_abi = bridge_artifact["abi"]
         bridge_contract = w3.eth.contract(address=bridge_address, abi=bridge_abi)
 
         withdrawal_events = bridge_contract.events.Withdrawal.get_logs()
