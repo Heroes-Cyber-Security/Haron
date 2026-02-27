@@ -2,6 +2,8 @@ name: blockchain-infra
 
 services:
   manager:
+    build:
+      context: ./manager
     image: hanz.dev/blockchain/manager
     env_file:
       - ./manager/.env
@@ -11,16 +13,22 @@ services:
       - "40000:8080"
     restart: always
   worker:
+    build:
+      context: ./worker
     image: hanz.dev/blockchain/worker
     env_file:
       - ./worker/.env
     restart: always
   orchestrator:
+    build:
+      context: ./orchestrator
     image: hanz.dev/blockchain/orchestrator
     env_file:
       - ./orchestrator/.env
     restart: always
   forwarder:
+    build:
+      context: ./forwarder
     image: hanz.dev/blockchain/forwarder
     env_file:
       - ./forwarder/.env
@@ -28,5 +36,14 @@ services:
       - "40001:8080"
     restart: always
   mock-ctfd:
+    build:
+      context: ./mock-ctfd
     image: hanz.dev/blockchain/mock-ctfd
+    restart: always
+  webui:
+    build:
+      context: ./webui
+    image: hanz.dev/blockchain/webui
+    ports:
+      - "57254:80"
     restart: always
