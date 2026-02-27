@@ -90,3 +90,7 @@ def is_solved() -> bool:
     Returns True if the challenge has been solved
     """
     return True
+
+
+if __name__ == "__main__":
+    start()
