@@ -86,7 +86,7 @@ async fn service_deploy(
 
     let chain_ids: Vec<u64> = match query.chains.as_deref() {
         Some(chains_str) => {
-            let mut ids: Vec<u64> = chains_str
+            let ids: Vec<u64> = chains_str
                 .split(',')
                 .filter_map(|s| s.trim().parse().ok())
                 .collect();

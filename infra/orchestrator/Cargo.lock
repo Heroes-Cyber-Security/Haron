@@ -5384,6 +5384,7 @@ dependencies = [
  "eyre",
  "futures-util",
  "libc",
+ "serde",
  "serde_json",
  "tokio",
 ]

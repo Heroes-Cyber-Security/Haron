@@ -20,6 +20,7 @@ pub struct SingleNodeEntry {
     pub api: crate::anvil::EthApi,
     pub sender: mpsc::Sender<crate::supervisor::Command>,
     pub task: JoinHandle<()>,
+    #[allow(dead_code)]
     pub chain_id: u64,
 }
 
