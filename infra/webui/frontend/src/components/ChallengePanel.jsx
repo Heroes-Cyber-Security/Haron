@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "../App";
 import Markdown from "./Markdown";
 import Notification from "./Notification";
+import {copyToClipboard} from "../lib/clipboard";
 
 const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 	const [challengeHash, setChallenge] = useState("");
@@ -104,12 +105,7 @@ const ChallengePanel = ({account, instance, setInstance, setFlag}) => {
 	}
 
 	const handleCopyFlag = async () => {
-		try {
-			await navigator.clipboard.writeText(notification.message);
-			// setNotification({ message: "", isFlag: false });
-		} catch (err) {
-			console.error('Failed to copy flag: ', err);
-		}
+		await copyToClipboard(notification.message);
 	}
 
 	const handleCloseNotification = () => {
