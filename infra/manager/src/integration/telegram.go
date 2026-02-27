@@ -34,20 +34,23 @@ func sendMessage(text string) {
 	response.Body.Close()
 }
 
-func NotifyFlagTelegram(pea types.Pea, playerIP string, flag string) {
+func notifyTelegram(pea types.Pea, playerIP, event, extraInfo string) {
 	challengeName := mustGetEnv("CHALLENGE_NAME")
 
 	playerName := CTFDGetMe(pea).Name
-	format := "<code>%s</code> (<code>%s</code>) solved <code>%s</code>\n<code>%s</code>\n<code>%s</code>"
-	msg := fmt.Sprintf(format, playerName, playerIP, challengeName, flag, pea.Id)
+	format := "<code>%s</code> (<code>%s</code>) %s <code>%s</code>\n%s<code>%s</code>"
+	extraTag := ""
+	if extraInfo != "" {
+		extraTag = "\n<code>" + extraInfo + "</code>"
+	}
+	msg := fmt.Sprintf(format, playerName, playerIP, event, challengeName, extraTag, pea.Id)
 	sendMessage(msg)
 }
 
-func NotifyPeaCreationTelegram(pea types.Pea, playerIP string) {
-	challengeName := mustGetEnv("CHALLENGE_NAME")
+func NotifyFlagTelegram(pea types.Pea, playerIP string, flag string) {
+	notifyTelegram(pea, playerIP, "solved", flag)
+}
 
-	playerName := CTFDGetMe(pea).Name
-	format := "<code>%s</code> (<code>%s</code>) instantiated <code>%s</code>\n<code>%s</code>"
-	msg := fmt.Sprintf(format, playerName, playerIP, challengeName, pea.Id)
-	sendMessage(msg)
+func NotifyPeaCreationTelegram(pea types.Pea, playerIP string) {
+	notifyTelegram(pea, playerIP, "instantiated", "")
 }
