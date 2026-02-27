@@ -129,6 +129,8 @@ func DelegateJob(challengeHash string, pea types.Pea) {
 		return
 	}
 
+	log.Printf("interop: raw worker response: %s", string(content))
+
 	var resp DelegateResponse
 	if err := json.Unmarshal(content, &resp); err != nil {
 		log.Printf("interop: unable to decode response: %v", err)
@@ -138,6 +140,8 @@ func DelegateJob(challengeHash string, pea types.Pea) {
 	pea.WorkerJobUid = resp.Uid
 	pea.SetupAddress = resp.Report.AnvilConfig.SetupAddress
 	pea.PlayerPrivateKey = resp.Report.AnvilConfig.PlayerPrivateKey
+
+	log.Printf("interop: parsed uid=%s, setup_address=%s", resp.Uid, resp.Report.AnvilConfig.SetupAddress)
 
 	if resp.Report.AnvilConfig.ContractAddress != "" {
 		log.Printf("interop: contract deployed at %s", resp.Report.AnvilConfig.ContractAddress)

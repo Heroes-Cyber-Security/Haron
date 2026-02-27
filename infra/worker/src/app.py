@@ -29,10 +29,8 @@ initialized = set()
 
 
 class Report(object):
-    anvilconfig: dict = {}
-
     def to_dict(self):
-        return {"anvilconfig": self.anvilconfig}
+        return {"anvilconfig": {}}
 
 
 class Job(object):
@@ -78,7 +76,7 @@ class Job(object):
             "uid": self.uid,
             "task": self.task,
             "anvil_endpoint": self.anvil_endpoint,
-            "report": self.report.to_dict(),
+            "report": self.report,
         }
 
 
@@ -169,8 +167,11 @@ def delegate(h):
     pea_id = extract_pea_id(anvil_endpoint)
     private_key, setup_address = generate_key_from_id(pea_id)
 
+    print(f"Generated for {pea_id}: address={setup_address}")
+
     try:
         fund_account(anvil_endpoint, setup_address)
+        print(f"Funded account {setup_address} successfully")
     except Exception as e:
         print(f"Warning: failed to fund account {setup_address}: {e}")
 
@@ -188,16 +189,18 @@ def delegate(h):
         env=env,
     )
     content = result.stdout or ""
+    print(f"chal.py stdout: {content}")
+    print(f"chal.py stderr: {result.stderr}")
     if content.strip():
         jobs[uid].report = json.loads(content)
     else:
-        jobs[uid].report = Report()
+        jobs[uid].report = {"anvilconfig": {}}
 
-    if isinstance(jobs[uid].report, dict):
-        if "anvilconfig" not in jobs[uid].report:
-            jobs[uid].report["anvilconfig"] = {}
-        jobs[uid].report["anvilconfig"]["setup_address"] = setup_address
-        jobs[uid].report["anvilconfig"]["player_private_key"] = private_key
+    if "anvilconfig" not in jobs[uid].report:
+        jobs[uid].report["anvilconfig"] = {}
+    jobs[uid].report["anvilconfig"]["setup_address"] = setup_address
+    jobs[uid].report["anvilconfig"]["player_private_key"] = private_key
+    print(f"Final report: {json.dumps(jobs[uid].report)}")
 
     job_dict = jobs[uid].to_dict()
     return job_dict
