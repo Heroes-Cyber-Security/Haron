@@ -5,21 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
 	"blockchain.hanz.dev/manager/types"
 )
 
 func sendMessage(text string) {
-	apiKey, exists := os.LookupEnv("TELEGRAM_API_KEY")
-	if !exists {
-		panic("missing TELEGRAM_API_KEY")
-	}
-
-	chatID, exists := os.LookupEnv("TELEGRAM_CHAT_ID")
-	if !exists {
-		panic("missing TELEGRAM_CHAT_ID")
-	}
+	apiKey := mustGetEnv("TELEGRAM_API_KEY")
+	chatID := mustGetEnv("TELEGRAM_CHAT_ID")
 
 	payload := map[string]interface{}{
 		"chat_id":    chatID,
@@ -43,10 +35,7 @@ func sendMessage(text string) {
 }
 
 func NotifyFlagTelegram(pea types.Pea, playerIP string, flag string) {
-	challengeName, exists := os.LookupEnv("CHALLENGE_NAME")
-	if !exists {
-		panic("missing CHALLENGE_NAME")
-	}
+	challengeName := mustGetEnv("CHALLENGE_NAME")
 
 	playerName := CTFDGetMe(pea).Name
 	format := "<code>%s</code> (<code>%s</code>) solved <code>%s</code>\n<code>%s</code>\n<code>%s</code>"
@@ -55,10 +44,7 @@ func NotifyFlagTelegram(pea types.Pea, playerIP string, flag string) {
 }
 
 func NotifyPeaCreationTelegram(pea types.Pea, playerIP string) {
-	challengeName, exists := os.LookupEnv("CHALLENGE_NAME")
-	if !exists {
-		panic("missing CHALLENGE_NAME")
-	}
+	challengeName := mustGetEnv("CHALLENGE_NAME")
 
 	playerName := CTFDGetMe(pea).Name
 	format := "<code>%s</code> (<code>%s</code>) instantiated <code>%s</code>\n<code>%s</code>"

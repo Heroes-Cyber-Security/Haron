@@ -4,17 +4,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 
 	"blockchain.hanz.dev/manager/types"
 )
 
 func CTFDGetMe(pea types.Pea) types.CTFDUser {
-	ctfdBase, exists := os.LookupEnv("CTFD_BASE")
-	if !exists {
-		panic("missing CTFD_BASE")
-	}
+	ctfdBase := mustGetEnv("CTFD_BASE")
 
 	url := strings.TrimSuffix(ctfdBase, "/") + "/api/v1/users/me"
 	req, err := http.NewRequest("GET", url, nil)
