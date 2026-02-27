@@ -40,13 +40,18 @@ func NewHTTPProxy(orchestratorBase *url.URL, client *http.Client, logger *log.Lo
 
 // ServeHTTP implements http.Handler and proxies the request to the orchestrator.
 func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	id, ok := extractEthID(r.URL.Path)
+	id, chainId, ok := extractEthIDWithChain(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
 
-	targetPath := singleJoiningSlash(p.base.Path, path.Join("anvil", id))
+	var targetPath string
+	if chainId == "" {
+		targetPath = singleJoiningSlash(p.base.Path, path.Join("anvil", id))
+	} else {
+		targetPath = singleJoiningSlash(p.base.Path, path.Join("anvil", id, chainId))
+	}
 	query := r.URL.RawQuery
 
 	proxy := &httputil.ReverseProxy{
@@ -90,6 +95,27 @@ func extractEthID(pathValue string) (string, bool) {
 	}
 
 	return candidate, candidate != ""
+}
+
+func extractEthIDWithChain(pathValue string) (string, string, bool) {
+	if !strings.HasPrefix(pathValue, "/eth/") {
+		return "", "", false
+	}
+
+	candidate := strings.TrimPrefix(pathValue, "/eth/")
+	if candidate == "" {
+		return "", "", false
+	}
+
+	slash := strings.Index(candidate, "/")
+	if slash < 0 {
+		return candidate, "", true
+	}
+
+	id := candidate[:slash]
+	chainId := candidate[slash+1:]
+
+	return id, chainId, id != ""
 }
 
 func singleJoiningSlash(a, b string) string {
