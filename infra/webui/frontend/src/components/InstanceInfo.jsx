@@ -1,14 +1,8 @@
+import {copyToClipboard} from '../lib/clipboard';
+
 const BASE_RPC_URL = import.meta.env.VITE_RPC_BASE_URL;
 
 const InstanceInfo = ({instance}) => {
-	const copyToClipboard = async (text) => {
-		try {
-			await navigator.clipboard.writeText(text);
-		} catch (err) {
-			console.error('Failed to copy text: ', err);
-		}
-	};
-
 	const rpcUrl = BASE_RPC_URL + "/eth/" + (instance.id ?? "");
 	const setupAddress = "0x87B45dA8b51b7612Cb7b44b267f01860d4fF43bC";
 	const playerPrivateKey = "0xb8c57cf2245c23279965b2e833a099a38d4fbd30fbfd8605d39eb502b8159e7d";
