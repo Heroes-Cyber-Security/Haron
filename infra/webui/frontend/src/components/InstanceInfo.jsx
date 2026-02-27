@@ -1,6 +1,6 @@
 import {copyToClipboard} from '../lib/clipboard';
 
-const BASE_RPC_URL = import.meta.env.VITE_RPC_BASE_URL;
+const BASE_RPC_URL = import.meta.env.VITE_RPC_BASE_URL ?? `http://${window.location.host}`;
 
 const InstanceInfo = ({instance}) => {
 	const rpcUrl = BASE_RPC_URL + "/eth/" + (instance.id ?? "");
