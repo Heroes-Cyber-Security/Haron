@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"blockchain.hanz.dev/manager/types"
 )
 
 func sendMessage(text string) {
-	apiKey := mustGetEnv("TELEGRAM_API_KEY")
+	apiKey, exists := os.LookupEnv("TELEGRAM_API_KEY")
+	if !exists {
+		return
+	}
 	chatID := mustGetEnv("TELEGRAM_CHAT_ID")
 
 	payload := map[string]interface{}{
