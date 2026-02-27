@@ -113,7 +113,11 @@ func DelegateJob(challengeHash string, pea *types.Pea) error {
 		UploadChallenge(challengeHash)
 	}
 
-	r := rq.Post("http://worker:8080/delegate/" + challengeHash + "?anvil_endpoint=" + url.QueryEscape(pea.GetAnvilEndpoint()))
+	endpointsJSON, _ := json.Marshal(pea.GetAnvilEndpoints())
+	queryParams := url.Values{}
+	queryParams.Set("anvil_endpoints", string(endpointsJSON))
+
+	r := rq.Post("http://worker:8080/delegate/" + challengeHash + "?" + queryParams.Encode())
 	req, err := r.ParseRequest()
 	if err != nil {
 		return fmt.Errorf("failed to parse request: %w", err)
