@@ -257,7 +257,13 @@ def delegate(h):
 
     if "anvilconfig" not in jobs[uid].report:
         jobs[uid].report["anvilconfig"] = {}
-    jobs[uid].report["anvilconfig"]["setup_address"] = setup_address
+
+    chains = jobs[uid].report["anvilconfig"].get("chains", [])
+    if chains:
+        jobs[uid].report["anvilconfig"]["setup_address"] = chains[0]["setup_address"]
+    else:
+        jobs[uid].report["anvilconfig"]["setup_address"] = setup_address
+
     jobs[uid].report["anvilconfig"]["player_private_key"] = private_key
     print(f"Final report: {json.dumps(jobs[uid].report)}")
 
