@@ -317,7 +317,7 @@ form {
 	flex-direction: column;
 	justify-content: flex-start;
 
-	> :first-child {
+	> :first-child:not(:only-child) {
 		padding-top: 1.5em;
 		height: 100%;
 		flex: 1;
@@ -337,7 +337,7 @@ form {
 		}
 	}
 
-	> :last-child {
+	> :last-child:not(:only-child) {
 		margin-top: auto;
 		width: 100%;
 	}
@@ -352,7 +352,10 @@ form {
 		> span {
 			display: inline;
 			width: max-content;
-			height: max-content;
+			height: auto;
+			flex: none;
+			padding-top: 0;
+			margin-top: 0;
 		}
 	}
 
