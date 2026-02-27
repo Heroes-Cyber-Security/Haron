@@ -102,9 +102,11 @@ pub async fn try_spawn(mut config: NodeConfig) -> Result<(EthApi, HeadlessNodeHa
     Ok((api, HeadlessNodeHandle::new(handle)))
 }
 
-pub fn create_config() -> NodeConfig {
+pub fn create_config(chain_id: u64) -> NodeConfig {
+    let chain_id_str = chain_id.to_string();
     let mut node_args: NodeArgs = NodeArgs::parse_from([
         "anvil",
+        "--chain-id", &chain_id_str,
         "--accounts", "0",
         "--block-time", "1"
     ]);
