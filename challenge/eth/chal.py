@@ -87,3 +87,7 @@ def on_incoming_tx() -> tuple:
 
 def on_tx():
     pass
+
+
+if __name__ == "__main__":
+    start()
