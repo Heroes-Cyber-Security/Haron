@@ -17,13 +17,18 @@ import (
 	"blockchain.hanz.dev/manager/types"
 )
 
+var rpcPublicHost = os.Getenv("RPC_PUBLIC_HOST")
+
 var peas = make(map[string]types.Pea)
 
 func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
 	result := make([]types.ChainInfo, len(chains))
 	for i, chain := range chains {
 		result[i] = chain
-		result[i].Rpc = strings.Replace(chain.Rpc, "orchestrator:", "localhost:", 1)
+		// Replace internal orchestrator URL with public RPC host
+		if rpcPublicHost != "" {
+			result[i].Rpc = strings.Replace(chain.Rpc, "orchestrator:8080", rpcPublicHost, 1)
+		}
 	}
 	return result
 }
