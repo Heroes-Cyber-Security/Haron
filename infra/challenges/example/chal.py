@@ -2,7 +2,13 @@ from typing import Dict, Optional, Tuple
 import json
 import os
 import subprocess
+import sys
 from web3 import Web3
+
+
+def log_debug(msg: str):
+    """Print debug messages to stderr so they don't interfere with JSON output"""
+    print(msg, file=sys.stderr)
 
 
 def start() -> Dict:
@@ -24,7 +30,7 @@ def start() -> Dict:
     with open("out/Setup.sol/Setup.json", "r") as f:
         artifact = json.load(f)
 
-    bytecode = artifact["deployedBytecode"]["object"]
+    bytecode = artifact["bytecode"]["object"]
     abi = artifact["abi"]
 
     # Deploy contract
@@ -33,8 +39,6 @@ def start() -> Dict:
         {
             "from": account.address,
             "nonce": w3.eth.get_transaction_count(account.address),
-            "gas": 2000000,
-            "gasPrice": w3.eth.gas_price,
         }
     )
     signed = account.sign_transaction(tx)
