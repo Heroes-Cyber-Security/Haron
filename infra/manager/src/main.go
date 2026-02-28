@@ -59,6 +59,8 @@ func main() {
 		pea := peas[accessToken]
 		interop.Stop(pea)
 
+		timeoutManager.Cancel(accessToken)
+
 		delete(peas, accessToken)
 		return Jsonify(c, map[string]any{"success": true})
 	})
