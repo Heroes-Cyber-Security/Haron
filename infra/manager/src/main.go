@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 
 	"blockchain.hanz.dev/manager/integration"
 	"blockchain.hanz.dev/manager/interop"
@@ -37,12 +36,6 @@ func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
 func main() {
 	e := echo.New()
 	e.HideBanner = true
-
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodOptions},
-		AllowHeaders: []string{"*"},
-	}))
 
 	e.Any("/", func(c echo.Context) error {
 		return Jsonify(c, map[string]string{"message": "hello from manager"})
