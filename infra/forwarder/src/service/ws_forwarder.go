@@ -2,6 +2,7 @@ package forwarder
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -100,8 +101,8 @@ func (wsp *WSForwarder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go wsp.pipe(ctx, &wg, clientConn, upstreamConn, errCh)
-	go wsp.pipe(ctx, &wg, upstreamConn, clientConn, errCh)
+	go wsp.pipe(ctx, &wg, clientConn, upstreamConn, errCh, true)
+	go wsp.pipe(ctx, &wg, upstreamConn, clientConn, errCh, false)
 
 	select {
 	case err := <-errCh:
@@ -113,7 +114,7 @@ func (wsp *WSForwarder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 }
 
-func (wsp *WSForwarder) pipe(ctx context.Context, wg *sync.WaitGroup, src, dst *websocket.Conn, errCh chan<- error) {
+func (wsp *WSForwarder) pipe(ctx context.Context, wg *sync.WaitGroup, src, dst *websocket.Conn, errCh chan<- error, filterClientToUpstream bool) {
 	defer wg.Done()
 	for {
 		mt, msg, err := src.ReadMessage()
@@ -121,6 +122,17 @@ func (wsp *WSForwarder) pipe(ctx context.Context, wg *sync.WaitGroup, src, dst *
 			errCh <- err
 			return
 		}
+
+		if filterClientToUpstream && mt == websocket.TextMessage {
+			if filteredResp := checkWebSocketMessage(msg); filteredResp != nil {
+				if err := src.WriteMessage(websocket.TextMessage, filteredResp); err != nil {
+					errCh <- err
+					return
+				}
+				continue
+			}
+		}
+
 		if err := dst.WriteMessage(mt, msg); err != nil {
 			errCh <- err
 			return
@@ -156,4 +168,65 @@ func isExpectedClose(err error) bool {
 		return true
 	}
 	return errors.Is(err, context.Canceled)
+}
+
+// checkWebSocketMessage checks if a WebSocket message contains a blocked RPC method
+// Returns JSON-RPC error response if blocked, nil if allowed
+func checkWebSocketMessage(msg []byte) []byte {
+	var singleReq rpcRequest
+	if err := json.Unmarshal(msg, &singleReq); err == nil && singleReq.Method != "" {
+		if isMethodBlocked(singleReq.Method) {
+			return createBlockedWSResponse(singleReq.ID)
+		}
+		return nil
+	}
+
+	var batchReq []rpcRequest
+	if err := json.Unmarshal(msg, &batchReq); err == nil && len(batchReq) > 0 {
+		var blockedRequests []rpcRequest
+		for _, req := range batchReq {
+			if isMethodBlocked(req.Method) {
+				blockedRequests = append(blockedRequests, req)
+			}
+		}
+		if len(blockedRequests) > 0 {
+			var responses []rpcResponse
+			for _, req := range blockedRequests {
+				var parsedID interface{}
+				if err := json.Unmarshal(req.ID, &parsedID); err != nil {
+					parsedID = nil
+				}
+				responses = append(responses, rpcResponse{
+					JsonRPC: "2.0",
+					ID:      parsedID,
+					Error: &rpcError{
+						Code:    -32601,
+						Message: "Method not allowed",
+					},
+				})
+			}
+			respBytes, _ := json.Marshal(responses)
+			return respBytes
+		}
+		return nil
+	}
+
+	return nil
+}
+
+func createBlockedWSResponse(id json.RawMessage) []byte {
+	var parsedID interface{}
+	if err := json.Unmarshal(id, &parsedID); err != nil {
+		parsedID = nil
+	}
+	resp := rpcResponse{
+		JsonRPC: "2.0",
+		ID:      parsedID,
+		Error: &rpcError{
+			Code:    -32601,
+			Message: "Method not allowed",
+		},
+	}
+	respBytes, _ := json.Marshal(resp)
+	return respBytes
 }

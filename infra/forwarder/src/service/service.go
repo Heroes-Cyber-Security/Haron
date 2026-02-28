@@ -1,6 +1,7 @@
 package forwarder
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -98,4 +99,24 @@ func isMethodBlocked(method string) bool {
 		"anvil_setBlockGasLimit":         true,
 	}
 	return blocked[method]
+}
+
+// rpcRequest represents a JSON-RPC 2.0 request
+type rpcRequest struct {
+	JsonRPC string          `json:"jsonrpc"`
+	Method  string          `json:"method"`
+	ID      json.RawMessage `json:"id"`
+	Params  json.RawMessage `json:"params"`
+}
+
+// rpcResponse represents a JSON-RPC 2.0 error response
+type rpcResponse struct {
+	JsonRPC string      `json:"jsonrpc"`
+	ID      interface{} `json:"id"`
+	Error   *rpcError   `json:"error"`
+}
+
+type rpcError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
