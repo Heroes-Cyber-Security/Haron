@@ -20,6 +20,7 @@ import (
 var rpcPublicHost = os.Getenv("RPC_PUBLIC_HOST")
 
 var peas = make(map[string]types.Pea)
+var timeoutManager = NewTimeoutManager()
 
 func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
 	result := make([]types.ChainInfo, len(chains))
@@ -109,6 +110,8 @@ func main() {
 		}
 
 		peas[accessToken] = pea
+
+		timeoutManager.Register(accessToken, config.TimeoutMinutes)
 
 		integration.NotifyPeaCreationTelegram(pea, playerIP)
 
