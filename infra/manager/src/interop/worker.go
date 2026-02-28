@@ -155,6 +155,7 @@ func DelegateJob(challengeHash string, pea *types.Pea) error {
 
 	if len(resp.Report.AnvilConfig.Chains) > 0 {
 		pea.Chains = make([]types.ChainInfo, len(resp.Report.AnvilConfig.Chains))
+		pea.ChainIds = make([]uint64, len(resp.Report.AnvilConfig.Chains))
 		for i, chain := range resp.Report.AnvilConfig.Chains {
 			pea.Chains[i] = types.ChainInfo{
 				ChainId:      chain.ChainId,
@@ -162,10 +163,14 @@ func DelegateJob(challengeHash string, pea *types.Pea) error {
 				Rpc:          chain.Rpc,
 				SetupAddress: chain.SetupAddress,
 			}
+			pea.ChainIds[i] = chain.ChainId
 		}
 		if pea.SetupAddress == "" {
 			pea.SetupAddress = pea.Chains[0].SetupAddress
 		}
+		log.Printf("interop: populated %d chains from worker response", len(pea.Chains))
+	} else {
+		log.Printf("interop: warning - no chains in worker response, using config chain_ids")
 	}
 
 	log.Printf("interop: parsed uid=%s, setup_address=%s", resp.Uid, resp.Report.AnvilConfig.SetupAddress)
