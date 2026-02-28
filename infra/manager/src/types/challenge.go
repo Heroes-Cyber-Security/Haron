@@ -13,8 +13,9 @@ type Challenge struct {
 }
 
 type ChallengeConfig struct {
-	FlagTemplate string        `yaml:"flag_template"`
-	Chains       []ChainConfig `yaml:"chains,omitempty"`
+	FlagTemplate   string        `yaml:"flag_template"`
+	Chains         []ChainConfig `yaml:"chains,omitempty"`
+	TimeoutMinutes int           `yaml:"timeout_minutes,omitempty"`
 }
 
 type ChainConfig struct {
