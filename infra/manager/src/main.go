@@ -139,7 +139,10 @@ func main() {
 	e.GET("/flag", func(c echo.Context) error {
 		accessToken := c.Request().Header.Get("Token")
 		playerIP := c.RealIP()
+
+		peasMu.RLock()
 		pea, ok := peas[accessToken]
+		peasMu.RUnlock()
 
 		if accessToken == "" {
 			return Jsonify(c, map[string]any{"error": "Unauthorized: Access Token"})
