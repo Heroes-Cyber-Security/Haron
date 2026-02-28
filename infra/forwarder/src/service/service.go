@@ -75,3 +75,27 @@ func (s *Service) serve(w http.ResponseWriter, r *http.Request) {
 func isWebSocketRequest(r *http.Request) bool {
 	return websocket.IsWebSocketUpgrade(r)
 }
+
+// isMethodBlocked returns true if the RPC method should be rejected
+func isMethodBlocked(method string) bool {
+	blocked := map[string]bool{
+		"anvil_setBalance":               true,
+		"anvil_impersonateAccount":       true,
+		"anvil_stopImpersonatingAccount": true,
+		"anvil_setStorageAt":             true,
+		"anvil_mine":                     true,
+		"anvil_setIntervalMining":        true,
+		"anvil_setCode":                  true,
+		"anvil_setNonce":                 true,
+		"anvil_setCoinbase":              true,
+		"anvil_removeTx":                 true,
+		"anvil_dropTransaction":          true,
+		"anvil_reset":                    true,
+		"anvil_setLoggingEnabled":        true,
+		"anvil_dumpState":                true,
+		"anvil_loadState":                true,
+		"anvil_setChainId":               true,
+		"anvil_setBlockGasLimit":         true,
+	}
+	return blocked[method]
+}
