@@ -171,6 +171,8 @@ func main() {
 		flag := GenerateFlag(pea)
 		integration.NotifyFlagTelegram(pea, playerIP, flag)
 
+		timeoutManager.Cancel(accessToken)
+
 		return Jsonify(c, map[string]any{"flag": flag})
 	})
 
