@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -17,6 +18,15 @@ import (
 )
 
 var peas = make(map[string]types.Pea)
+
+func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
+	result := make([]types.ChainInfo, len(chains))
+	for i, chain := range chains {
+		result[i] = chain
+		result[i].Rpc = strings.Replace(chain.Rpc, "orchestrator:", "localhost:", 1)
+	}
+	return result
+}
 
 func main() {
 	e := echo.New()
@@ -68,7 +78,7 @@ func main() {
 				"player_private_key": pea.PlayerPrivateKey,
 			}
 			if len(pea.Chains) > 1 {
-				response["chains"] = pea.Chains
+				response["chains"] = convertRpcUrls(pea.Chains)
 			}
 			return Jsonify(c, response)
 		}
@@ -104,7 +114,7 @@ func main() {
 		}
 
 		if len(pea.Chains) > 1 {
-			response["chains"] = pea.Chains
+			response["chains"] = convertRpcUrls(pea.Chains)
 		}
 
 		return Jsonify(c, response)
