@@ -1,6 +1,7 @@
 package interop
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,7 +13,7 @@ import (
 
 var ORCHESTRATOR_BASE = "http://orchestrator:8080"
 
-func Deploy(pea types.Pea) {
+func Deploy(pea types.Pea) error {
 	chainIdsStr := ""
 	if len(pea.ChainIds) > 0 {
 		chainIds := make([]string, len(pea.ChainIds))
@@ -25,13 +26,19 @@ func Deploy(pea types.Pea) {
 	r := rq.Post(ORCHESTRATOR_BASE + "/deploy/" + pea.Id + chainIdsStr)
 	req, err := r.ParseRequest()
 	if err != nil {
-		return
+		return fmt.Errorf("failed to parse orchestrator request: %w", err)
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return
+		return fmt.Errorf("orchestrator request failed: %w", err)
 	}
 	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("orchestrator returned status %d", res.StatusCode)
+	}
+
+	return nil
 }
 
 func Stop(pea types.Pea) {
