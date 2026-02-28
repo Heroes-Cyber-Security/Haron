@@ -1,10 +1,12 @@
 #!/bin/bash
 set -e
 
+cleanup() {
+    echo "Cleaning up..."
+    docker compose down
+}
+
+trap cleanup EXIT
+
 echo "Building and starting services..."
-docker compose up --build -d
-
-echo "Services started. Press Ctrl+C to stop..."
-trap "docker compose down" EXIT
-
-docker compose logs -f
+docker compose up --build
