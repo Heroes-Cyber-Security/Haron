@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -19,6 +20,7 @@ import (
 var rpcPublicHost = os.Getenv("RPC_PUBLIC_HOST")
 
 var peas = make(map[string]types.Pea)
+var peasMu sync.RWMutex
 var timeoutManager = NewTimeoutManager()
 
 func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
