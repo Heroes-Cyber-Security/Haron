@@ -25,7 +25,7 @@ func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
 	result := make([]types.ChainInfo, len(chains))
 	for i, chain := range chains {
 		result[i] = chain
-		// Replace internal orchestrator URL with public RPC host
+		// Replace internal orchestrator URL with public webui host
 		if rpcPublicHost != "" {
 			result[i].Rpc = strings.Replace(chain.Rpc, "orchestrator:8080", rpcPublicHost, 1)
 		}

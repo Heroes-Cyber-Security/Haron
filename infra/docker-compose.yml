@@ -8,7 +8,7 @@ services:
     env_file:
       - ./manager/.env
     environment:
-      - RPC_PUBLIC_HOST=${RPC_PUBLIC_HOST:-localhost:40001}
+      - RPC_PUBLIC_HOST=${RPC_PUBLIC_HOST:-localhost:57254}
     volumes:
       - ./challenges:/home/ctf/challenges:ro
     ports:
