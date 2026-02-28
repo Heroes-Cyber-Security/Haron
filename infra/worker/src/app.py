@@ -376,6 +376,7 @@ def validate(uid):
         return {"solved": False, "error": "Setup address not found"}
 
     os.environ[CONTRACT_ADDRESS_KEY] = setup_address
+    os.environ["SETUP_ADDRESS"] = setup_address
     os.environ["ANVIL_ENDPOINT"] = job.anvil_endpoints[0]
     os.environ["ANVIL_ENDPOINTS"] = json.dumps(job.anvil_endpoints)
     os.environ["CHAIN_IDS"] = json.dumps(job.chain_ids)

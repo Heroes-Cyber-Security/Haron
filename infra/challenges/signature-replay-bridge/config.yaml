@@ -1,7 +1,0 @@
-flag_template: "flag{bridge_replay_solved_%>HASH<%}"
-
-chains:
-  - chainId: 1
-    name: "Source Chain"
-  - chainId: 2
-    name: "Destination Chain"
