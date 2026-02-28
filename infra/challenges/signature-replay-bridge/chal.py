@@ -18,7 +18,8 @@ def deploy_contract(
     )
 
     contract_name = os.path.basename(contract_path).replace(".sol", "")
-    artifact_path = f"out/{contract_path}/{contract_name}.json"
+    contract_file = os.path.basename(contract_path)
+    artifact_path = f"out/{contract_file}/{contract_name}.json"
 
     with open(artifact_path, "r") as f:
         artifact = json.load(f)
