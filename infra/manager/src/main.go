@@ -99,14 +99,19 @@ func main() {
 			ChainIds:      config.GetChainIds(),
 		}
 
-		interop.Deploy(pea)
+		if err := interop.Deploy(pea); err != nil {
+			log.Printf("main: Deploy failed: %v", err)
+			return Jsonify(c, map[string]any{"error": "Failed to deploy instance"})
+		}
+
 		if err := interop.DelegateJob(challengeHash, &pea); err != nil {
 			log.Printf("main: DelegateJob failed: %v", err)
-			delete(peas, accessToken)
 			return Jsonify(c, map[string]any{"error": err.Error()})
 		}
 
+		peasMu.Lock()
 		peas[accessToken] = pea
+		peasMu.Unlock()
 
 		timeoutManager.Register(accessToken, config.TimeoutMinutes)
 
