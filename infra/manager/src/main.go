@@ -154,14 +154,21 @@ func main() {
 		accessToken := c.Request().Header.Get("Token")
 		playerIP := c.RealIP()
 
+		if accessToken == "" {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
+		}
+
+		player := integration.CTFDGetMe(types.Pea{AccessToken: accessToken})
+		if !player.IsValid() {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
+		}
+
 		peasMu.RLock()
 		pea, ok := peas[accessToken]
 		peasMu.RUnlock()
 
-		if accessToken == "" {
-			return Jsonify(c, map[string]any{"error": "Unauthorized: Access Token"})
-		} else if !ok {
-			return Jsonify(c, map[string]any{"error": "Unauthorized: Instance does not exists"})
+		if !ok {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
 
 		res, err := http.Get("http://worker:8080/validate/" + pea.WorkerJobUid)
