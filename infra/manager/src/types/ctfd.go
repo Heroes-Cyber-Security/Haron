@@ -5,6 +5,10 @@ type CTFDUser struct {
 	Name string
 }
 
+func (user CTFDUser) IsValid() bool {
+	return user.Id > 0 && user.Name != "invalid"
+}
+
 func (user CTFDUser) ToJSON() map[string]any {
 	return map[string]any{
 		"id":   user.Id,
