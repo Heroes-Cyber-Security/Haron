@@ -27,6 +27,7 @@ CONTRACT_ADDRESS_KEY = "OWNABLE_CONTRACT_ADDRESS"
 jobs: Dict[str, "Job"] = {}
 active_jobs = set()
 initialized = set()
+_instance_secrets: Dict[str, dict] = {}
 
 
 class InstanceDetail:
