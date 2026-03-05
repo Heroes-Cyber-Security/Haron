@@ -47,13 +47,22 @@ func main() {
 	e.POST("/stop", func(c echo.Context) error {
 		accessToken := c.Request().Header.Get("Token")
 
+		if accessToken == "" {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
+		}
+
+		player := integration.CTFDGetMe(types.Pea{AccessToken: accessToken})
+		if !player.IsValid() {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
+		}
+
 		peasMu.RLock()
 		_, ok := peas[accessToken]
 		pea := peas[accessToken]
 		peasMu.RUnlock()
 
 		if !ok {
-			return Jsonify(c, map[string]any{"error": "Unauthorized: Instance not found"})
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
 
 		interop.Stop(pea)
