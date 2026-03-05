@@ -1,0 +1,3 @@
+[submodule "infra/challenges/midnight-dead-space/lib/forge-std"]
+	path = infra/challenges/midnight-dead-space/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
