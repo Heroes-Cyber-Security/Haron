@@ -5,6 +5,7 @@ async function getAccount(accessToken) {
 	const res = await apiClient.get('/profile?accessToken=' + accessToken);
 	const data = res.data;
 	if (!data.data) return;
+	if (data.data.id === -1 || data.data.name === "invalid") return;
 	return data.data;
 }
 
