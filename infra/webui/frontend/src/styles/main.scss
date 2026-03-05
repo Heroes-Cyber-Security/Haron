@@ -184,6 +184,7 @@ form {
 		grid-column: span 3 / span 3;
 		grid-row: span 2 / span 2;
 		grid-column-start: 3;
+		background: url('/bg.png') center/cover no-repeat;
 	}
 
 	& > .div3 {
