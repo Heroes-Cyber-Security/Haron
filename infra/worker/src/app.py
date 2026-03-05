@@ -210,8 +210,6 @@ def delegate(h):
     /delegate/:h?anvil_endpoints=["http://...", "http://..."]
     """
     uid = str(uuid.uuid4())
-    task_dir = os.path.join(BASE_CACHE_DIR, h)
-
     anvil_endpoints_str = request.query.get("anvil_endpoints")
     if anvil_endpoints_str:
         anvil_endpoints = json.loads(anvil_endpoints_str)
@@ -219,6 +217,8 @@ def delegate(h):
         anvil_endpoints = [request.query["anvil_endpoint"]]
 
     chain_ids = [int(ep.split("/")[-1]) for ep in anvil_endpoints]
+    pea_id = extract_pea_id(anvil_endpoints[0])
+    task_dir = os.path.join(BASE_CACHE_DIR, f"{h}_{pea_id}")
 
     jobs[uid] = Job(uid, h, anvil_endpoints, chain_ids)
 
@@ -356,7 +356,8 @@ def delegate(h):
 @post("/start/:uid")
 def start_job(uid):
     job = jobs[uid]
-    task_dir = os.path.join(BASE_CACHE_DIR, job.task)
+    pea_id = extract_pea_id(job.anvil_endpoints[0])
+    task_dir = os.path.join(BASE_CACHE_DIR, f"{job.task}_{pea_id}")
 
     active_jobs.add(job)
     job.start(task_dir)
