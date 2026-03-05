@@ -43,7 +43,8 @@ func CTFDGetMe(pea types.Pea) types.CTFDUser {
 
 	data, ok := intermediary["data"].(map[string]any)
 
-	id, _ := data["id"].(int)
+	idFloat, _ := data["id"].(float64)
+	id := int(idFloat)
 	name, _ := data["name"].(string)
 
 	return types.CTFDUser{Id: id, Name: name}
