@@ -213,7 +213,11 @@ func main() {
 
 	// CTFd helpers
 	e.GET("/profile", func(c echo.Context) error {
-		player := integration.CTFDGetMe(types.Pea{AccessToken: c.QueryParam("id")})
+		player := integration.CTFDGetMe(types.Pea{AccessToken: c.QueryParam("accessToken")})
+
+		if !player.IsValid() {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
+		}
 
 		return Jsonify(c, map[string]any{"data": player.ToJSON()})
 	})
