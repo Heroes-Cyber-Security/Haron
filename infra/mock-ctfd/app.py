@@ -2,11 +2,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import socket
 
-#!/usr/bin/env python3
-# Simple HTTP server with one endpoint: /api/v1/user/me
-# Save as /home/hanz/OpenSource/MockCTFD/app.py
-
-
 HOST = "0.0.0.0"
 PORT = 9090
 
@@ -29,13 +24,11 @@ class SimpleHandler(BaseHTTPRequestHandler):
             self._send_json({"success": False, "error": "not found"}, status=404)
 
     def log_message(self, format, *args):
-        # suppress default logging or customize as needed
         return
 
 
 def run():
     server = HTTPServer((HOST, PORT), SimpleHandler)
-    # try to set SO_REUSEADDR to reduce "address already in use" issues on restart
     try:
         server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     except Exception:
