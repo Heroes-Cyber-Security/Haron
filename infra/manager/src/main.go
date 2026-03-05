@@ -72,9 +72,14 @@ func main() {
 		playerIP := c.RealIP()
 
 		if accessToken == "" {
-			return Jsonify(c, map[string]any{"error": "Unauthorized: Access Token"})
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		} else if challengeHash == "" {
-			return Jsonify(c, map[string]any{"error": "Unauthorized: Challenge Hash"})
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
+		}
+
+		player := integration.CTFDGetMe(types.Pea{AccessToken: accessToken})
+		if !player.IsValid() {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
 
 		if pea, ok := peas[accessToken]; ok {
