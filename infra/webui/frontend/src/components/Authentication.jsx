@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import { apiClient } from '../App';
 
 async function getAccount(accessToken) {
@@ -9,8 +9,11 @@ async function getAccount(accessToken) {
 }
 
 const Authentication = ({account, setAccount}) => {
+	const [error, setError] = useState("");
+
 	const handleSubmit = async (e) => {
 		e.preventDefault();
+		setError("");
 
 		if (account.name) {
 			setAccount((x) => ({}));
@@ -25,6 +28,8 @@ const Authentication = ({account, setAccount}) => {
 				name: _account.name,
 				accessToken: accessToken
 			}));
+		} else {
+			setError("Authentication failed");
 		}
 	};
 
@@ -35,6 +40,7 @@ const Authentication = ({account, setAccount}) => {
 					<label htmlFor="accessToken">Access Token</label>
 					<input name="accessToken" placeholder="..." />
 				</div>
+				{error && <div className="error" style={{"color": "red", "marginTop": "1em"}}>{error}</div>}
 			</div>
 			<input type="submit" value="Log In" />
 		</form>;
