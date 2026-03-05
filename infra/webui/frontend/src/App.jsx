@@ -30,7 +30,7 @@ const App = () => {
 						setFlag={setFlag}
 					/>
 				</div>
-				<div className="div2">{instance.id}</div>
+				<div className="div2"></div>
 				<div className="div3" style={{"padding": "0"}}>
 					<InstanceInfo instance={instance} />
 				</div>
