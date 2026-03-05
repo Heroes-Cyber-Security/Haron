@@ -10,6 +10,9 @@ func (user CTFDUser) IsValid() bool {
 }
 
 func (user CTFDUser) ToJSON() map[string]any {
+	if !user.IsValid() {
+		return nil
+	}
 	return map[string]any{
 		"id":   user.Id,
 		"name": user.Name,
