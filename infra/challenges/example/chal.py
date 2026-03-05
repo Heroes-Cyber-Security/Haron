@@ -15,37 +15,53 @@ def start() -> Dict:
     """
     Deploy the Setup contract and return its address
     """
-    anvil_endpoint = os.environ.get("ANVIL_ENDPOINT", "http://localhost:8545")
-    private_key = os.environ["PLAYER_PRIVATE_KEY"]
+    anvil_endpoints = json.loads(os.environ["ANVIL_ENDPOINTS"])
+    chain_ids = json.loads(os.environ["CHAIN_IDS"])
+    player_private_key = os.environ["PLAYER_PRIVATE_KEY"]
+    setup_address = os.environ["SETUP_ADDRESS"]
 
-    w3 = Web3(Web3.HTTPProvider(anvil_endpoint))
-    account = w3.eth.account.from_key(private_key)
+    result_chains = []
 
-    # Build contract with forge
-    subprocess.run(
-        ["/home/ctf/.foundry/bin/forge", "build"], check=True, capture_output=True
-    )
+    for idx, (endpoint, chain_id) in enumerate(zip(anvil_endpoints, chain_ids)):
+        w3 = Web3(Web3.HTTPProvider(endpoint))
+        account = w3.eth.account.from_key(player_private_key)
 
-    # Read compiled artifact
-    with open("out/Setup.sol/Setup.json", "r") as f:
-        artifact = json.load(f)
+        subprocess.run(
+            ["/home/ctf/.foundry/bin/forge", "build"], check=True, capture_output=True
+        )
 
-    bytecode = artifact["bytecode"]["object"]
-    abi = artifact["abi"]
+        with open("out/Setup.sol/Setup.json", "r") as f:
+            artifact = json.load(f)
 
-    # Deploy contract
-    contract_factory = w3.eth.contract(abi=abi, bytecode=bytecode)
-    tx = contract_factory.constructor().build_transaction(
-        {
-            "from": account.address,
-            "nonce": w3.eth.get_transaction_count(account.address),
+        bytecode = artifact["bytecode"]["object"]
+        abi = artifact["abi"]
+
+        contract_factory = w3.eth.contract(abi=abi, bytecode=bytecode)
+        tx = contract_factory.constructor().build_transaction(
+            {
+                "from": account.address,
+                "nonce": w3.eth.get_transaction_count(account.address),
+            }
+        )
+        signed = account.sign_transaction(tx)
+        tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+
+        result_chains.append(
+            {
+                "chainId": chain_id,
+                "rpc": endpoint,
+                "setup_address": receipt["contractAddress"],
+            }
+        )
+
+    result = {
+        "anvilconfig": {
+            "setup_address": setup_address,
+            "player_private_key": player_private_key,
+            "chains": result_chains,
         }
-    )
-    signed = account.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-
-    result = {"anvilconfig": {"contract_address": receipt.contractAddress}}
+    }
     print(json.dumps(result))
     return result
 
@@ -89,7 +105,7 @@ def on_tx():
     pass
 
 
-def is_solved(instance: "InstanceDetail") -> bool:
+def is_solved(instance) -> bool:
     """
     Returns True if the challenge has been solved
     """
