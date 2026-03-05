@@ -281,6 +281,15 @@ def delegate(h):
     env["ANVIL_ENDPOINTS"] = json.dumps(anvil_endpoints)
     env["CHAIN_IDS"] = json.dumps(chain_ids)
 
+    _instance_secrets[uid] = {
+        "PLAYER_PRIVATE_KEY": private_key,
+        "SETUP_ADDRESS": setup_address,
+        "DEPLOYER_PRIVATE_KEY": deployer_key,
+        "DEPLOYER_ADDRESS": deployer_address,
+        "ANVIL_ENDPOINTS": json.dumps(anvil_endpoints),
+        "CHAIN_IDS": json.dumps(chain_ids),
+    }
+
     print(
         f"DEBUG: Calling chal.py with ANVIL_ENDPOINTS={env['ANVIL_ENDPOINTS']}",
         file=sys.stderr,
