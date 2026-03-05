@@ -169,6 +169,22 @@ func DelegateJob(challengeHash string, pea *types.Pea) error {
 			pea.SetupAddress = pea.Chains[0].SetupAddress
 		}
 		log.Printf("interop: populated %d chains from worker response", len(pea.Chains))
+
+		config, err := types.LoadChallengeConfig(challengeHash)
+		if err == nil && len(config.Chains) > 0 {
+			configChainMap := make(map[uint64]string)
+			for _, c := range config.Chains {
+				if c.Name != "" {
+					configChainMap[c.ChainId] = c.Name
+				}
+			}
+			for i := range pea.Chains {
+				if name, ok := configChainMap[pea.Chains[i].ChainId]; ok {
+					pea.Chains[i].Name = name
+				}
+			}
+			log.Printf("interop: merged config chain names for %s", challengeHash)
+		}
 	} else {
 		log.Printf("interop: warning - no chains in worker response, using config chain_ids")
 	}
