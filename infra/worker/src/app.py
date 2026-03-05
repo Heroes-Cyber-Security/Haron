@@ -389,7 +389,8 @@ def validate(uid):
         raise HTTPError(404, "Job not found")
 
     job = jobs[uid]
-    task_dir = os.path.join(BASE_CACHE_DIR, job.task)
+    pea_id = extract_pea_id(job.anvil_endpoints[0])
+    task_dir = os.path.join(BASE_CACHE_DIR, f"{job.task}_{pea_id}")
 
     module_name = f"chal_{uid}"
     module_path = os.path.join(task_dir, "chal.py")
@@ -403,17 +404,27 @@ def validate(uid):
     spec.loader.exec_module(module)
 
     setup_address = job.report.get("anvilconfig", {}).get("setup_address")
-    if not setup_address:
-        return {"solved": False, "error": "Setup address not found"}
+    player_private_key = job.report.get("anvilconfig", {}).get("player_private_key")
 
-    os.environ[CONTRACT_ADDRESS_KEY] = setup_address
-    os.environ["SETUP_ADDRESS"] = setup_address
-    os.environ["ANVIL_ENDPOINT"] = job.anvil_endpoints[0]
-    os.environ["ANVIL_ENDPOINTS"] = json.dumps(job.anvil_endpoints)
-    os.environ["CHAIN_IDS"] = json.dumps(job.chain_ids)
+    if not setup_address or not player_private_key:
+        return {"solved": False, "error": "Instance details not found"}
+
+    w3 = Web3(Web3.HTTPProvider(job.anvil_endpoints[0]))
+    player_account = w3.eth.account.from_key(player_private_key)
+    player_address = player_account.address
+
+    instance = InstanceDetail(
+        instance_id=pea_id,
+        challenge_hash=job.task,
+        setup_address=setup_address,
+        player_address=player_address,
+        player_private_key=player_private_key,
+        anvil_endpoints=job.anvil_endpoints,
+        chain_ids=job.chain_ids,
+    )
 
     try:
-        solved = module.is_solved()
+        solved = module.is_solved(instance)
         return {"solved": solved}
     except Exception as e:
         return {"solved": False, "error": str(e)}
