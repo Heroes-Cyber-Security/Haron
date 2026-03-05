@@ -1,9 +1,11 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 import json
 import os
 import subprocess
 import sys
 from web3 import Web3
+
+InstanceDetail = Any
 
 
 def log_debug(msg: str):
@@ -89,7 +91,7 @@ def on_tx():
     pass
 
 
-def is_solved() -> bool:
+def is_solved(instance: InstanceDetail) -> bool:
     """
     Returns True if the challenge has been solved
     """
