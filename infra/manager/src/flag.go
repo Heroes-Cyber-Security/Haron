@@ -15,7 +15,7 @@ func GenerateFlag(pea types.Pea) string {
 	}
 
 	h256 := sha3.Sum256([]byte(pea.AccessToken))
-	h64 := fmt.Sprintf("%x", h256[:8])
+	h128 := fmt.Sprintf("%x", h256[:16])
 
-	return strings.Replace(cfg.FlagTemplate, "%>HASH<%", h64, -1)
+	return strings.Replace(cfg.FlagTemplate, "%>HASH<%", h128, -1)
 }
