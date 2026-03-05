@@ -440,7 +440,17 @@ def validate(uid):
 
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
+
+    secrets = _instance_secrets.get(uid)
+    original_env = os.environ.copy()
+    if secrets:
+        os.environ.update(secrets)
+
     spec.loader.exec_module(module)
+
+    if secrets:
+        os.environ.clear()
+        os.environ.update(original_env)
 
     setup_address = job.report.get("anvilconfig", {}).get("setup_address")
     player_private_key = job.report.get("anvilconfig", {}).get("player_private_key")
