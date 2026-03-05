@@ -227,6 +227,13 @@ def delegate(h):
         try:
             os.makedirs(task_dir, exist_ok=True)
             zip_path = os.path.join(task_dir, f"{h}.zip")
+
+            base_zip_path = os.path.join(BASE_CACHE_DIR, h, f"{h}.zip")
+            if os.path.exists(base_zip_path):
+                import shutil
+
+                shutil.copy(base_zip_path, zip_path)
+
             with zipfile.ZipFile(zip_path, "r") as zr:
                 zr.extractall(task_dir)
             venv_dir = os.path.join(task_dir, ".venv")
@@ -236,28 +243,34 @@ def delegate(h):
             subprocess.run(
                 [pip_executable, "install", "-r", requirements_path], cwd=task_dir
             )
-        except Exception:
+        except Exception as e:
+            import traceback
+
+            print(f"ERROR: Challenge initialization failed: {e}", file=sys.stderr)
+            print(f"ERROR: Traceback: {traceback.format_exc()}", file=sys.stderr)
             initialized.remove(h)
             return dict()
 
     pea_id = extract_pea_id(anvil_endpoints[0])
     private_key, setup_address = generate_key_from_id(pea_id)
 
-    print(f"Generated for {pea_id}: address={setup_address}")
+    print(f"Generated for {pea_id}: address={setup_address}", file=sys.stderr)
 
     deployer_key = "0x" + secrets.token_hex(32)
     w3 = Web3(Web3.HTTPProvider(anvil_endpoints[0]))
     deployer_account = w3.eth.account.from_key(deployer_key)
     deployer_address = deployer_account.address
 
-    print(f"Generated deployer: address={deployer_address}")
+    print(f"Generated deployer: address={deployer_address}", file=sys.stderr)
 
     for endpoint in anvil_endpoints:
         try:
             fund_account(endpoint, setup_address)
             fund_account(endpoint, deployer_address)
         except Exception as e:
-            print(f"Warning: failed to fund account on {endpoint}: {e}")
+            print(
+                f"Warning: failed to fund account on {endpoint}: {e}", file=sys.stderr
+            )
 
     env = os.environ.copy()
     env["PLAYER_PRIVATE_KEY"] = private_key
@@ -267,15 +280,21 @@ def delegate(h):
     env["ANVIL_ENDPOINTS"] = json.dumps(anvil_endpoints)
     env["CHAIN_IDS"] = json.dumps(chain_ids)
 
-    print(f"DEBUG: Calling chal.py with ANVIL_ENDPOINTS={env['ANVIL_ENDPOINTS']}")
+    print(
+        f"DEBUG: Calling chal.py with ANVIL_ENDPOINTS={env['ANVIL_ENDPOINTS']}",
+        file=sys.stderr,
+    )
     sys.stdout.flush()
-    print(f"DEBUG: Calling chal.py with CHAIN_IDS={env['CHAIN_IDS']}")
+    print(f"DEBUG: Calling chal.py with CHAIN_IDS={env['CHAIN_IDS']}", file=sys.stderr)
     sys.stdout.flush()
 
     python_executable = os.path.join(task_dir, ".venv", "bin", "python")
     script_path = os.path.join(task_dir, "chal.py")
 
-    print(f"DEBUG: Executing [{python_executable}, {script_path}] in {task_dir}")
+    print(
+        f"DEBUG: Executing [{python_executable}, {script_path}] in {task_dir}",
+        file=sys.stderr,
+    )
     sys.stdout.flush()
 
     try:
@@ -287,40 +306,48 @@ def delegate(h):
             env=env,
             timeout=120,
         )
-        print(f"DEBUG: chal.py returncode={result.returncode}")
+        print(f"DEBUG: chal.py returncode={result.returncode}", file=sys.stderr)
         sys.stdout.flush()
         content = result.stdout or ""
-        print(f"chal.py stdout: {content}")
+        print(f"chal.py stdout: {content}", file=sys.stderr)
         sys.stdout.flush()
         if result.stderr:
-            print(f"chal.py stderr: {result.stderr}")
+            print(f"chal.py stderr: {result.stderr}", file=sys.stderr)
             sys.stdout.flush()
 
         if result.returncode != 0:
-            print(f"ERROR: chal.py exited with code {result.returncode}")
+            print(
+                f"ERROR: chal.py exited with code {result.returncode}", file=sys.stderr
+            )
             sys.stdout.flush()
             jobs[uid].report = {"anvilconfig": {}}
         elif content.strip():
             try:
                 jobs[uid].report = json.loads(content)
-                print(f"DEBUG: Successfully parsed chal.py output as JSON")
+                print(
+                    f"DEBUG: Successfully parsed chal.py output as JSON",
+                    file=sys.stderr,
+                )
                 sys.stdout.flush()
             except json.JSONDecodeError as e:
-                print(f"ERROR: Failed to parse chal.py output as JSON: {e}")
+                print(
+                    f"ERROR: Failed to parse chal.py output as JSON: {e}",
+                    file=sys.stderr,
+                )
                 sys.stdout.flush()
-                print(f"ERROR: Raw output was: {content}")
+                print(f"ERROR: Raw output was: {content}", file=sys.stderr)
                 sys.stdout.flush()
                 jobs[uid].report = {"anvilconfig": {}}
         else:
-            print(f"WARNING: chal.py produced no stdout")
+            print(f"WARNING: chal.py produced no stdout", file=sys.stderr)
             sys.stdout.flush()
             jobs[uid].report = {"anvilconfig": {}}
     except subprocess.TimeoutExpired:
-        print(f"ERROR: chal.py execution timed out after 120 seconds")
+        print(f"ERROR: chal.py execution timed out after 120 seconds", file=sys.stderr)
         sys.stdout.flush()
         jobs[uid].report = {"anvilconfig": {}}
     except Exception as e:
-        print(f"ERROR: chal.py execution failed with exception: {e}")
+        print(f"ERROR: chal.py execution failed with exception: {e}", file=sys.stderr)
         sys.stdout.flush()
         import traceback
 
@@ -331,22 +358,24 @@ def delegate(h):
         jobs[uid].report["anvilconfig"] = {}
 
     chains = jobs[uid].report["anvilconfig"].get("chains", [])
-    print(f"DEBUG: Extracted chains from report: {chains}")
+    print(f"DEBUG: Extracted chains from report: {chains}", file=sys.stderr)
     sys.stdout.flush()
     if chains:
-        print(f"DEBUG: Found {len(chains)} chains in report")
+        print(f"DEBUG: Found {len(chains)} chains in report", file=sys.stderr)
         sys.stdout.flush()
         jobs[uid].report["anvilconfig"]["setup_address"] = chains[0]["setup_address"]
     else:
         print(
-            f"DEBUG: No chains found in report, using fallback setup_address={setup_address}"
+            f"DEBUG: No chains found in report, using fallback setup_address={setup_address}",
+            file=sys.stderr,
         )
         jobs[uid].report["anvilconfig"]["setup_address"] = setup_address
 
     jobs[uid].report["anvilconfig"]["player_private_key"] = private_key
-    print(f"Final report: {json.dumps(jobs[uid].report)}")
+    print(f"Final report: {json.dumps(jobs[uid].report)}", file=sys.stderr)
     print(
-        f"DEBUG: Final report has {len(jobs[uid].report['anvilconfig'].get('chains', []))} chains"
+        f"DEBUG: Final report has {len(jobs[uid].report['anvilconfig'].get('chains', []))} chains",
+        file=sys.stderr,
     )
 
     job_dict = jobs[uid].to_dict()
