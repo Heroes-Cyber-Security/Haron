@@ -202,6 +202,7 @@ def generate_report(cwd) -> Union[dict, Report]:
 @post("/stop/:jobid")
 def stop(jobid):
     del jobs[jobid]
+    _instance_secrets.pop(jobid, None)
     return "OK"
 
 
