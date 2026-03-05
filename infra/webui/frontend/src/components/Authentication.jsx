@@ -22,6 +22,10 @@ const Authentication = ({account, setAccount}) => {
 		}
 
 		let accessToken = e.target[0].value;
+		if (!accessToken || !accessToken.trim()) {
+			setError("Access Token cannot be empty");
+			return;
+		}
 		let _account = await getAccount(accessToken);
 
 		if (_account) {
@@ -39,7 +43,7 @@ const Authentication = ({account, setAccount}) => {
 			<div style={{"padding": "1.5em"}}>
 				<div className="input-group">
 					<label htmlFor="accessToken">Access Token</label>
-					<input name="accessToken" placeholder="..." />
+					<input name="accessToken" placeholder="..." required />
 				</div>
 				{error && <div className="error" style={{"color": "red", "marginTop": "1em"}}>{error}</div>}
 			</div>
