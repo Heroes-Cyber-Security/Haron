@@ -29,6 +29,36 @@ active_jobs = set()
 initialized = set()
 
 
+class InstanceDetail:
+    """Represents challenge instance details for isolated solve verification"""
+
+    instance_id: str
+    challenge_hash: str
+    setup_address: str
+    player_address: str
+    player_private_key: str
+    anvil_endpoints: list[str]
+    chain_ids: list[int]
+
+    def __init__(
+        self,
+        instance_id: str,
+        challenge_hash: str,
+        setup_address: str,
+        player_address: str,
+        player_private_key: str,
+        anvil_endpoints: list[str],
+        chain_ids: list[int],
+    ):
+        self.instance_id = instance_id
+        self.challenge_hash = challenge_hash
+        self.setup_address = setup_address
+        self.player_address = player_address
+        self.player_private_key = player_private_key
+        self.anvil_endpoints = anvil_endpoints
+        self.chain_ids = chain_ids
+
+
 class Report(object):
     def to_dict(self):
         return {"anvilconfig": {}}
