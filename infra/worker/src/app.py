@@ -40,6 +40,7 @@ class InstanceDetail:
     player_private_key: str
     anvil_endpoints: list[str]
     chain_ids: list[int]
+    anvil_config: dict
 
     def __init__(
         self,
@@ -50,6 +51,7 @@ class InstanceDetail:
         player_private_key: str,
         anvil_endpoints: list[str],
         chain_ids: list[int],
+        anvil_config: dict,
     ):
         self.instance_id = instance_id
         self.challenge_hash = challenge_hash
@@ -58,11 +60,12 @@ class InstanceDetail:
         self.player_private_key = player_private_key
         self.anvil_endpoints = anvil_endpoints
         self.chain_ids = chain_ids
+        self.anvil_config = anvil_config
 
 
 class Report(object):
     def to_dict(self):
-        return {"anvilconfig": {}}
+        return {"anvil_config": {}}
 
 
 class Job(object):
@@ -331,7 +334,7 @@ def delegate(h):
                 f"ERROR: chal.py exited with code {result.returncode}", file=sys.stderr
             )
             sys.stdout.flush()
-            jobs[uid].report = {"anvilconfig": {}}
+            jobs[uid].report = {"anvil_config": {}}
         elif content.strip():
             try:
                 jobs[uid].report = json.loads(content)
@@ -348,44 +351,44 @@ def delegate(h):
                 sys.stdout.flush()
                 print(f"ERROR: Raw output was: {content}", file=sys.stderr)
                 sys.stdout.flush()
-                jobs[uid].report = {"anvilconfig": {}}
+                jobs[uid].report = {"anvil_config": {}}
         else:
             print(f"WARNING: chal.py produced no stdout", file=sys.stderr)
             sys.stdout.flush()
-            jobs[uid].report = {"anvilconfig": {}}
+            jobs[uid].report = {"anvil_config": {}}
     except subprocess.TimeoutExpired:
         print(f"ERROR: chal.py execution timed out after 120 seconds", file=sys.stderr)
         sys.stdout.flush()
-        jobs[uid].report = {"anvilconfig": {}}
+        jobs[uid].report = {"anvil_config": {}}
     except Exception as e:
         print(f"ERROR: chal.py execution failed with exception: {e}", file=sys.stderr)
         sys.stdout.flush()
         import traceback
 
         traceback.print_exc()
-        jobs[uid].report = {"anvilconfig": {}}
+        jobs[uid].report = {"anvil_config": {}}
 
-    if "anvilconfig" not in jobs[uid].report:
-        jobs[uid].report["anvilconfig"] = {}
+    if "anvil_config" not in jobs[uid].report:
+        jobs[uid].report["anvil_config"] = {}
 
-    chains = jobs[uid].report["anvilconfig"].get("chains", [])
+    chains = jobs[uid].report["anvil_config"].get("chains", [])
     print(f"DEBUG: Extracted chains from report: {chains}", file=sys.stderr)
     sys.stdout.flush()
     if chains:
         print(f"DEBUG: Found {len(chains)} chains in report", file=sys.stderr)
         sys.stdout.flush()
-        jobs[uid].report["anvilconfig"]["setup_address"] = chains[0]["setup_address"]
+        jobs[uid].report["anvil_config"]["setup_address"] = chains[0]["setup_address"]
     else:
         print(
             f"DEBUG: No chains found in report, using fallback setup_address={setup_address}",
             file=sys.stderr,
         )
-        jobs[uid].report["anvilconfig"]["setup_address"] = setup_address
+        jobs[uid].report["anvil_config"]["setup_address"] = setup_address
 
-    jobs[uid].report["anvilconfig"]["player_private_key"] = private_key
+    jobs[uid].report["anvil_config"]["player_private_key"] = private_key
     print(f"Final report: {json.dumps(jobs[uid].report)}", file=sys.stderr)
     print(
-        f"DEBUG: Final report has {len(jobs[uid].report['anvilconfig'].get('chains', []))} chains",
+        f"DEBUG: Final report has {len(jobs[uid].report['anvil_config'].get('chains', []))} chains",
         file=sys.stderr,
     )
 
@@ -453,8 +456,8 @@ def validate(uid):
         os.environ.clear()
         os.environ.update(original_env)
 
-    setup_address = job.report.get("anvilconfig", {}).get("setup_address")
-    player_private_key = job.report.get("anvilconfig", {}).get("player_private_key")
+    setup_address = job.report.get("anvil_config", {}).get("setup_address")
+    player_private_key = job.report.get("anvil_config", {}).get("player_private_key")
 
     if not setup_address or not player_private_key:
         return {"solved": False, "error": "Instance details not found"}
@@ -471,6 +474,7 @@ def validate(uid):
         player_private_key=player_private_key,
         anvil_endpoints=job.anvil_endpoints,
         chain_ids=job.chain_ids,
+        anvil_config=job.report,
     )
 
     try:

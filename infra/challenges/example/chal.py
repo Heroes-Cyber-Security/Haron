@@ -100,7 +100,7 @@ def start() -> Dict:
         )
 
     result = {
-        "anvilconfig": {
+        "anvil_config": {
             "setup_address": setup_address,
             "player_private_key": player_private_key,
             "chains": result_chains,

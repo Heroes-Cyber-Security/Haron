@@ -31,7 +31,7 @@ type AnvilConfig struct {
 }
 
 type Report struct {
-	AnvilConfig AnvilConfig `json:"anvilconfig"`
+	AnvilConfig AnvilConfig `json:"anvil_config"`
 }
 
 type DelegateResponse struct {
