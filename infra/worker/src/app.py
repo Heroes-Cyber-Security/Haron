@@ -33,17 +33,6 @@ _instance_secrets: Dict[str, dict] = {}
 
 
 class InstanceDetail:
-    """Represents challenge instance details for isolated solve verification"""
-
-    instance_id: str
-    challenge_hash: str
-    setup_address: str
-    player_address: str
-    player_private_key: str
-    anvil_endpoints: list[str]
-    chain_ids: list[int]
-    anvil_config: dict
-
     def __init__(
         self,
         instance_id: str,
@@ -54,6 +43,7 @@ class InstanceDetail:
         anvil_endpoints: list[str],
         chain_ids: list[int],
         anvil_config: dict,
+        cwd: str,
     ):
         self.instance_id = instance_id
         self.challenge_hash = challenge_hash
@@ -63,6 +53,7 @@ class InstanceDetail:
         self.anvil_endpoints = anvil_endpoints
         self.chain_ids = chain_ids
         self.anvil_config = anvil_config
+        self.cwd = cwd
 
 
 class Report(object):
@@ -477,6 +468,7 @@ def validate(uid):
         anvil_endpoints=job.anvil_endpoints,
         chain_ids=job.chain_ids,
         anvil_config=job.report.get("anvil_config", {}),
+        cwd=task_dir,
     )
 
     try:
