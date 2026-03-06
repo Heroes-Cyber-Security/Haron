@@ -91,7 +91,9 @@ func main() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
 
+		peasMu.RLock()
 		if pea, ok := peas[accessToken]; ok {
+			peasMu.RUnlock()
 			if pea.ChallengeHash != challengeHash {
 				return Jsonify(c, map[string]any{"error": "Error: You have existing instance for another challenge"})
 			}
@@ -105,6 +107,7 @@ func main() {
 			}
 			return Jsonify(c, response)
 		}
+		peasMu.RUnlock()
 
 		config, err := types.LoadChallengeConfig(challengeHash)
 		if err != nil {
