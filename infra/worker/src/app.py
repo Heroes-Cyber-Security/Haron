@@ -9,11 +9,13 @@ from eth_listener import EthListener
 
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import secrets
 import subprocess
 import sys
+from contextlib import redirect_stderr
 import uuid
 import venv
 import zipfile
@@ -478,7 +480,13 @@ def validate(uid):
     )
 
     try:
-        solved = module.is_solved(instance)
+        f = io.StringIO()
+        with redirect_stderr(f):
+            solved = module.is_solved(instance)
+        stderr_output = f.getvalue()
+        if stderr_output:
+            print(f"is_solved stderr: {stderr_output}", file=sys.stderr)
+            sys.stderr.flush()
         return {"solved": solved}
     except Exception as e:
         return {"solved": False, "error": str(e)}
