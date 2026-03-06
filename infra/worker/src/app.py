@@ -476,7 +476,7 @@ def validate(uid):
         player_private_key=player_private_key,
         anvil_endpoints=job.anvil_endpoints,
         chain_ids=job.chain_ids,
-        anvil_config=job.report.get("anvil_config", job.report),
+        anvil_config=job.report.get("anvil_config", {}),
     )
 
     try:
