@@ -137,6 +137,15 @@ class Job(object):
             eth_listener.on("newHeads", self.new_heads_handler)
             self.eth_listeners.append(eth_listener)
 
+    def stop(self):
+        for listener in self.eth_listeners:
+            try:
+                if hasattr(listener, "stop"):
+                    listener.stop()
+            except Exception:
+                pass
+        self.eth_listeners.clear()
+
     def to_dict(self):
         return {
             "uid": self.uid,
@@ -197,7 +206,11 @@ def generate_report(cwd) -> Union[dict, Report]:
 
 @post("/stop/:jobid")
 def stop(jobid):
-    del jobs[jobid]
+    if jobid in jobs:
+        job = jobs[jobid]
+        job.stop()
+        active_jobs.discard(job)
+        del jobs[jobid]
     _instance_secrets.pop(jobid, None)
     return "OK"
 
