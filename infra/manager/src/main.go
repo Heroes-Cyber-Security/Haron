@@ -66,6 +66,7 @@ func main() {
 		}
 
 		interop.Stop(pea)
+		interop.StopJob(pea)
 
 		timeoutManager.Cancel(accessToken)
 
