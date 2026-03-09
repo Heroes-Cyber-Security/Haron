@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"log"
-	"net/http"
 	"sync"
 	"time"
+
+	"blockchain.hanz.dev/manager/interop"
 )
 
 // TimeoutManager manages automatic cleanup of player instances
@@ -52,19 +51,23 @@ func (tm *TimeoutManager) cleanup(accessToken string) {
 
 	log.Printf("Timeout expired for %s, cleaning up instance", accessToken)
 
-	reqBody := map[string]interface{}{}
-	bodyBytes, _ := json.Marshal(reqBody)
+	peasMu.RLock()
+	pea, ok := peas[accessToken]
+	peasMu.RUnlock()
 
-	resp, err := http.Post(
-		"http://localhost:8080/stop",
-		"application/json",
-		bytes.NewReader(bodyBytes),
-	)
-	if err != nil {
-		log.Printf("Failed to cleanup instance %s: %v", accessToken, err)
+	if !ok {
+		log.Printf("No instance found for %s during timeout cleanup", accessToken)
 		return
 	}
-	defer resp.Body.Close()
+
+	interop.Stop(pea)
+	interop.StopJob(pea)
+
+	peasMu.Lock()
+	delete(peas, accessToken)
+	peasMu.Unlock()
+
+	log.Printf("Completed timeout cleanup for %s", accessToken)
 }
 
 // Cancel cancels the timeout for an access token
