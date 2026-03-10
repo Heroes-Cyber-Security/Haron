@@ -12,6 +12,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -22,6 +23,20 @@ import zipfile
 from urllib.parse import urlparse
 
 from web3 import Web3
+
+
+CHALLENGE_HASH_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def sanitize_challenge_hash(h: str) -> str:
+    """Validate and sanitize challenge hash to prevent path traversal."""
+    safe_hash = os.path.basename(h)
+    if ".." in safe_hash:
+        raise HTTPError(400, "Invalid challenge hash: contains directory traversal")
+    if not CHALLENGE_HASH_PATTERN.match(safe_hash):
+        raise HTTPError(400, "Invalid challenge hash format")
+    return safe_hash
+
 
 BASE_CACHE_DIR = "/home/ctf/cache"
 CONTRACT_ADDRESS_KEY = "OWNABLE_CONTRACT_ADDRESS"
@@ -423,12 +438,13 @@ def package(h):
 
 @post("/package/:h")
 def package_post(h):
-    cache_path = os.path.join(BASE_CACHE_DIR, h)
+    safe_hash = sanitize_challenge_hash(h)
+    cache_path = os.path.join(BASE_CACHE_DIR, safe_hash)
     os.makedirs(cache_path, exist_ok=True)
     upload = next(iter(request.files.values()), None)
     if upload is None:
         raise HTTPError(400, "No file uploaded")
-    upload.save(os.path.join(cache_path, f"{h}.zip"), overwrite=True)
+    upload.save(os.path.join(cache_path, f"{safe_hash}.zip"), overwrite=True)
     return "OK"
 
 
