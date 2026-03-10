@@ -8,9 +8,11 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"golang.org/x/time/rate"
 
 	"blockchain.hanz.dev/manager/integration"
 	"blockchain.hanz.dev/manager/interop"
@@ -22,6 +24,47 @@ var rpcPublicHost = os.Getenv("RPC_PUBLIC_HOST")
 var peas = make(map[string]types.Pea)
 var peasMu sync.RWMutex
 var timeoutManager = NewTimeoutManager()
+
+var (
+	rateLimiters = make(map[string]*rate.Limiter)
+	rateMu       sync.RWMutex
+)
+
+func getRateLimiter(accessToken string) *rate.Limiter {
+	rateMu.RLock()
+	if limiter, exists := rateLimiters[accessToken]; exists {
+		rateMu.RUnlock()
+		return limiter
+	}
+	rateMu.RUnlock()
+
+	rateMu.Lock()
+	defer rateMu.Unlock()
+
+	if limiter, exists := rateLimiters[accessToken]; exists {
+		return limiter
+	}
+
+	limiter := rate.NewLimiter(rate.Every(time.Minute), 10)
+	rateLimiters[accessToken] = limiter
+	return limiter
+}
+
+func rateLimitMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		accessToken := c.Request().Header.Get("Token")
+		if accessToken == "" {
+			return Jsonify(c, map[string]any{"error": "Unauthorized"})
+		}
+
+		limiter := getRateLimiter(accessToken)
+		if !limiter.Allow() {
+			return Jsonify(c, map[string]any{"error": "Rate limit exceeded"})
+		}
+
+		return next(c)
+	}
+}
 
 func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
 	result := make([]types.ChainInfo, len(chains))
@@ -43,8 +86,12 @@ func main() {
 		return Jsonify(c, map[string]string{"message": "hello from manager"})
 	})
 
+	// Apply rate limiting to sensitive endpoints
+	rateLimited := e.Group("")
+	rateLimited.Use(rateLimitMiddleware)
+
 	// Interface for `webui`
-	e.POST("/stop", func(c echo.Context) error {
+	rateLimited.POST("/stop", func(c echo.Context) error {
 		accessToken := c.Request().Header.Get("Token")
 
 		if accessToken == "" {
@@ -76,7 +123,7 @@ func main() {
 		return Jsonify(c, map[string]any{"success": true})
 	})
 
-	e.POST("/create", func(c echo.Context) error {
+	rateLimited.POST("/create", func(c echo.Context) error {
 		accessToken := c.Request().Header.Get("Token")
 		challengeHash := c.Request().Header.Get("Challenge")
 		playerIP := c.RealIP()
@@ -154,7 +201,7 @@ func main() {
 		return Jsonify(c, response)
 	})
 
-	e.GET("/flag", func(c echo.Context) error {
+	rateLimited.GET("/flag", func(c echo.Context) error {
 		accessToken := c.Request().Header.Get("Token")
 		playerIP := c.RealIP()
 
