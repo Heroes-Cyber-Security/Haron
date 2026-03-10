@@ -77,13 +77,6 @@ async fn service_deploy(
 ) -> impl Responder {
     let id = params.into_inner();
 
-    {
-        let nodes = state.nodes.lock().await;
-        if nodes.contains_key(&id) {
-            return "ALREADY_EXISTS";
-        }
-    }
-
     let chain_ids: Vec<u64> = match query.chains.as_deref() {
         Some(chains_str) => {
             let ids: Vec<u64> = chains_str
@@ -100,11 +93,17 @@ async fn service_deploy(
     };
 
     let mut unique_check = std::collections::HashSet::new();
-    for id in &chain_ids {
-        if !unique_check.insert(*id) {
-            eprintln!("duplicate chainId detected: {id}");
+    for chain_id in &chain_ids {
+        if !unique_check.insert(*chain_id) {
+            eprintln!("duplicate chainId detected: {chain_id}");
             return "DUPLICATE_CHAIN_ID";
         }
+    }
+
+    let mut nodes = state.nodes.lock().await;
+    
+    if nodes.contains_key(&id) {
+        return "ALREADY_EXISTS";
     }
 
     let mut deployed_nodes: std::collections::HashMap<u64, SingleNodeEntry> =
@@ -127,18 +126,7 @@ async fn service_deploy(
         }
     }
 
-    let mut nodes = state.nodes.lock().await;
-    if nodes.contains_key(&id) {
-        drop(nodes);
-        for (_, node) in deployed_nodes {
-            node.shutdown().await;
-        }
-        trim_allocator();
-        return "ALREADY_EXISTS";
-    }
-
     nodes.insert(id, NodeEntry { nodes: deployed_nodes });
-    drop(nodes);
 
     "OK"
 }
