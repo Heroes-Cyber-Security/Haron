@@ -1,7 +1,6 @@
 from gevent import monkey
 
 monkey.patch_all()
-from copy import deepcopy
 from typing import Callable, Dict, Union, List
 
 from bottle import get, post, run, request, HTTPError
