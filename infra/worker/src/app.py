@@ -8,13 +8,16 @@ from eth_listener import EthListener
 
 import hashlib
 import importlib.util
+import inspect
 import io
 import json
 import os
 import re
 import secrets
+import shutil
 import subprocess
 import sys
+import traceback
 from contextlib import redirect_stderr
 import uuid
 import venv
@@ -107,8 +110,6 @@ class Job(object):
         handler = getattr(module, "on_new_block", None)
         if not callable(handler):
             raise AttributeError("Expected callable 'on_new_block' in chal module")
-
-        import inspect
 
         sig = inspect.signature(handler)
         param_count = len(sig.parameters)
@@ -255,8 +256,6 @@ def delegate(h):
 
             base_zip_path = os.path.join(BASE_CACHE_DIR, h, f"{h}.zip")
             if os.path.exists(base_zip_path):
-                import shutil
-
                 shutil.copy(base_zip_path, zip_path)
 
             with zipfile.ZipFile(zip_path, "r") as zr:
@@ -269,8 +268,6 @@ def delegate(h):
                 [pip_executable, "install", "-r", requirements_path], cwd=task_dir
             )
         except Exception as e:
-            import traceback
-
             print(f"ERROR: Challenge initialization failed: {e}", file=sys.stderr)
             print(f"ERROR: Traceback: {traceback.format_exc()}", file=sys.stderr)
             initialized.remove(h)
@@ -379,8 +376,6 @@ def delegate(h):
         jobs[uid].report = {"anvil_config": {}}
     except Exception as e:
         print(f"ERROR: chal.py execution failed with exception: {e}", file=sys.stderr)
-
-        import traceback
 
         traceback.print_exc()
         jobs[uid].report = {"anvil_config": {}}
