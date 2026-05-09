@@ -318,9 +318,8 @@ def delegate(h):
         f"DEBUG: Calling chal.py with ANVIL_ENDPOINTS={env['ANVIL_ENDPOINTS']}",
         file=sys.stderr,
     )
-    sys.stdout.flush()
+
     print(f"DEBUG: Calling chal.py with CHAIN_IDS={env['CHAIN_IDS']}", file=sys.stderr)
-    sys.stdout.flush()
 
     python_executable = os.path.join(task_dir, ".venv", "bin", "python")
     script_path = os.path.join(task_dir, "chal.py")
@@ -329,7 +328,6 @@ def delegate(h):
         f"DEBUG: Executing [{python_executable}, {script_path}] in {task_dir}",
         file=sys.stderr,
     )
-    sys.stdout.flush()
 
     try:
         result = subprocess.run(
@@ -341,19 +339,18 @@ def delegate(h):
             timeout=120,
         )
         print(f"DEBUG: chal.py returncode={result.returncode}", file=sys.stderr)
-        sys.stdout.flush()
+
         content = result.stdout or ""
         print(f"chal.py stdout: {content}", file=sys.stderr)
-        sys.stdout.flush()
+
         if result.stderr:
             print(f"chal.py stderr: {result.stderr}", file=sys.stderr)
-            sys.stdout.flush()
 
         if result.returncode != 0:
             print(
                 f"ERROR: chal.py exited with code {result.returncode}", file=sys.stderr
             )
-            sys.stdout.flush()
+
             jobs[uid].report = {"anvil_config": {}}
         elif content.strip():
             try:
@@ -362,27 +359,27 @@ def delegate(h):
                     "DEBUG: Successfully parsed chal.py output as JSON",
                     file=sys.stderr,
                 )
-                sys.stdout.flush()
+
             except json.JSONDecodeError as e:
                 print(
                     f"ERROR: Failed to parse chal.py output as JSON: {e}",
                     file=sys.stderr,
                 )
-                sys.stdout.flush()
+
                 print(f"ERROR: Raw output was: {content}", file=sys.stderr)
-                sys.stdout.flush()
+
                 jobs[uid].report = {"anvil_config": {}}
         else:
             print("WARNING: chal.py produced no stdout", file=sys.stderr)
-            sys.stdout.flush()
+
             jobs[uid].report = {"anvil_config": {}}
     except subprocess.TimeoutExpired:
         print("ERROR: chal.py execution timed out after 120 seconds", file=sys.stderr)
-        sys.stdout.flush()
+
         jobs[uid].report = {"anvil_config": {}}
     except Exception as e:
         print(f"ERROR: chal.py execution failed with exception: {e}", file=sys.stderr)
-        sys.stdout.flush()
+
         import traceback
 
         traceback.print_exc()
@@ -393,10 +390,10 @@ def delegate(h):
 
     chains = jobs[uid].report["anvil_config"].get("chains", [])
     print(f"DEBUG: Extracted chains from report: {chains}", file=sys.stderr)
-    sys.stdout.flush()
+
     if chains:
         print(f"DEBUG: Found {len(chains)} chains in report", file=sys.stderr)
-        sys.stdout.flush()
+    
         jobs[uid].report["anvil_config"]["setup_address"] = chains[0]["setup_address"]
     else:
         print(
