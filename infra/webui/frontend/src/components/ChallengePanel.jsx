@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '../App';
+import { copyToClipboard } from '../lib/clipboard';
 import Markdown from './Markdown';
 import Notification from './Notification';
-import { copyToClipboard } from '../lib/clipboard';
 
 const ChallengePanel = ({ account, instance, setInstance, setFlag }) => {
   const [challengeHash, setChallenge] = useState('');
@@ -40,15 +40,15 @@ const ChallengePanel = ({ account, instance, setInstance, setFlag }) => {
     setChallenge(e.target.value);
 
     for (let i = 0; i < challenges.length; i++) {
-      if (challenges[i] == e.target.value) {
+      if (challenges[i] === e.target.value) {
         setReadme(readmes[i]);
         break;
       }
     }
   };
 
-  const handleStart = async (e) => {
-    setInstance((x) => ({
+  const handleStart = async (_e) => {
+    setInstance((_x) => ({
       starting: true,
     }));
     try {
@@ -76,21 +76,21 @@ const ChallengePanel = ({ account, instance, setInstance, setFlag }) => {
     }
   };
 
-  const handleStop = async (e) => {
+  const handleStop = async (_e) => {
     if (!instance.id) return;
-    setInstance((x) => ({
+    setInstance((_x) => ({
       stopping: true,
     }));
 
-    const res = apiClient.post('/stop', undefined, {
+    const _res = apiClient.post('/stop', undefined, {
       headers: {
         Token: account.accessToken,
       },
     });
-    setInstance((x) => ({}));
+    setInstance((_x) => ({}));
   };
 
-  const handleFlag = async (e) => {
+  const handleFlag = async (_e) => {
     if (!instance.id) return;
     setInstance((x) => ({
       ...x,

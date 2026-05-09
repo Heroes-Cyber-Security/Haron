@@ -1,7 +1,7 @@
+import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
 import { memo, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
 
 import shikiHighlighter from '../lib/shikiHighlighter.js';
 

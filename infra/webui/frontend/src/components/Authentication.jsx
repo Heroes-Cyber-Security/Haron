@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { apiClient } from '../App';
 
 async function getAccount(accessToken) {
-  const res = await apiClient.get('/profile?accessToken=' + accessToken);
+  const res = await apiClient.get(`/profile?accessToken=${accessToken}`);
   const data = res.data;
   if (!data.data) return;
   if (data.data.id === -1 || data.data.name === 'invalid') return;
@@ -17,19 +17,19 @@ const Authentication = ({ account, setAccount }) => {
     setError('');
 
     if (account.name) {
-      setAccount((x) => ({}));
+      setAccount((_x) => ({}));
       return;
     }
 
-    let accessToken = e.target[0].value;
-    if (!accessToken || !accessToken.trim()) {
+    const accessToken = e.target[0].value;
+    if (!accessToken?.trim()) {
       setError('Access Token cannot be empty');
       return;
     }
-    let _account = await getAccount(accessToken);
+    const _account = await getAccount(accessToken);
 
     if (_account) {
-      setAccount((x) => ({
+      setAccount((_x) => ({
         name: _account.name,
         accessToken: accessToken,
       }));

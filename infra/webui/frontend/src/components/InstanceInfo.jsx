@@ -10,7 +10,7 @@ const InstanceInfo = ({ instance }) => {
 
   const currentChain = isMultiChain ? instance.chains[selectedChainIndex] : null;
 
-  const rpcUrl = currentChain?.rpc ?? BASE_RPC_URL + '/eth/' + (instance.id ?? '');
+  const rpcUrl = currentChain?.rpc ?? `${BASE_RPC_URL}/eth/${instance.id ?? ''}`;
   const setupAddress = currentChain?.setup_address ?? instance.setup_address ?? '';
   const playerPrivateKey = instance.player_private_key ?? '';
 

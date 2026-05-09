@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 
 import Authentication from './components/Authentication';
 import ChallengePanel from './components/ChallengePanel';
@@ -13,10 +13,10 @@ export const apiClient = axios.create({
 const App = () => {
   const [account, setAccount] = useState({ name: '', accessToken: '' });
   const [instance, setInstance] = useState({ id: '', chains: [] });
-  const [flag, setFlag] = useState('');
+  const [_flag, setFlag] = useState('');
 
   useEffect(() => {
-    if (account.name == undefined) setInstance({});
+    if (account.name === undefined) setInstance({});
   }, [account]);
 
   return (
