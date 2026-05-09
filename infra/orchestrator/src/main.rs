@@ -11,9 +11,7 @@ use anvil_rpc::request::Request as RpcRequest;
 use eyre::{Result as EyreResult, eyre};
 use serde_json::Value;
 use std::collections::HashMap;
-use tokio::{
-    sync::{Mutex, mpsc, oneshot},
-};
+use tokio::sync::{Mutex, mpsc, oneshot};
 
 struct AppState {
     nodes: Mutex<HashMap<String, NodeEntry>>,
@@ -27,7 +25,10 @@ impl AppState {
     }
 }
 
-async fn spawn_supervised_node(config: anvil::NodeConfig, chain_id: u64) -> EyreResult<SingleNodeEntry> {
+async fn spawn_supervised_node(
+    config: anvil::NodeConfig,
+    chain_id: u64,
+) -> EyreResult<SingleNodeEntry> {
     let (command_tx, command_rx) = mpsc::channel(8);
     let supervisor_task = supervisor::spawn(command_rx, config);
 
@@ -59,7 +60,12 @@ async fn spawn_supervised_node(config: anvil::NodeConfig, chain_id: u64) -> Eyre
         .await
         .map_err(|_| eyre!("failed to receive api handle from supervisor"))?;
 
-    Ok(SingleNodeEntry { api, sender: command_tx, task: supervisor_task, chain_id })
+    Ok(SingleNodeEntry {
+        api,
+        sender: command_tx,
+        task: supervisor_task,
+        chain_id,
+    })
 }
 
 #[derive(serde::Deserialize)]
@@ -81,11 +87,7 @@ async fn service_deploy(
                 .split(',')
                 .filter_map(|s| s.trim().parse().ok())
                 .collect();
-            if ids.is_empty() {
-                vec![1]
-            } else {
-                ids
-            }
+            if ids.is_empty() { vec![1] } else { ids }
         }
         None => vec![1],
     };
@@ -99,7 +101,7 @@ async fn service_deploy(
     }
 
     let mut nodes = state.nodes.lock().await;
-    
+
     if nodes.contains_key(&id) {
         return "ALREADY_EXISTS";
     }
@@ -124,7 +126,12 @@ async fn service_deploy(
         }
     }
 
-    nodes.insert(id, NodeEntry { nodes: deployed_nodes });
+    nodes.insert(
+        id,
+        NodeEntry {
+            nodes: deployed_nodes,
+        },
+    );
 
     "OK"
 }
@@ -166,12 +173,10 @@ async fn forward_eth_json_rpc_compat(
             Some(node_entry) => {
                 let first_chain = node_entry.nodes.keys().min().copied();
                 match first_chain {
-                    Some(chain_id) => {
-                        match node_entry.nodes.get(&chain_id) {
-                            Some(node) => node.sender.clone(),
-                            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
-                        }
-                    }
+                    Some(chain_id) => match node_entry.nodes.get(&chain_id) {
+                        Some(node) => node.sender.clone(),
+                        None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+                    },
                     None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
                 }
             }
@@ -304,12 +309,10 @@ async fn forward_eth_json_rpc_ws_compat(
             Some(node_entry) => {
                 let first_chain = node_entry.nodes.keys().min().copied();
                 match first_chain {
-                    Some(chain_id) => {
-                        match node_entry.nodes.get(&chain_id) {
-                            Some(node) => node.sender.clone(),
-                            None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
-                        }
-                    }
+                    Some(chain_id) => match node_entry.nodes.get(&chain_id) {
+                        Some(node) => node.sender.clone(),
+                        None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
+                    },
                     None => return Ok(HttpResponse::NotFound().body("NOT_FOUND")),
                 }
             }

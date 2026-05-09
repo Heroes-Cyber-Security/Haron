@@ -26,7 +26,9 @@ pub struct SingleNodeEntry {
 
 impl SingleNodeEntry {
     pub async fn shutdown(self) {
-        let SingleNodeEntry { api, sender, task, .. } = self;
+        let SingleNodeEntry {
+            api, sender, task, ..
+        } = self;
         drop(api);
         let (tx, rx) = oneshot::channel();
         let _ = sender

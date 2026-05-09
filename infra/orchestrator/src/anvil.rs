@@ -3,8 +3,8 @@ pub use anvil::cmd::NodeArgs;
 pub use anvil::eth::EthApi;
 pub use anvil::pubsub::{EthSubscription, LogsSubscription};
 
-use clap_builder::Parser;
 use anvil::NodeHandle;
+use clap_builder::Parser;
 use eyre::Result;
 use std::ops::{Deref, DerefMut};
 
@@ -106,12 +106,17 @@ pub fn create_config(chain_id: u64) -> NodeConfig {
     let chain_id_str = chain_id.to_string();
     let node_args: NodeArgs = NodeArgs::parse_from([
         "anvil",
-        "--chain-id", &chain_id_str,
-        "--accounts", "0",
-        "--block-time", "1"
+        "--chain-id",
+        &chain_id_str,
+        "--accounts",
+        "0",
+        "--block-time",
+        "1",
     ]);
 
-    let mut config: NodeConfig = node_args.into_node_config().expect("Anvil NodeArgs transform to NodeConfig fail");
+    let mut config: NodeConfig = node_args
+        .into_node_config()
+        .expect("Anvil NodeArgs transform to NodeConfig fail");
 
     config.silent = true;
     config.enable_tracing = false;

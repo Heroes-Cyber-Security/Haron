@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "biome format --write",
+    "lint": "biome lint",
+    "check": "biome check"
   },
   "author": "Hanz <hi@hanz.dev>",
   "license": "MIT",
@@ -23,6 +26,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.0",
     "@vitejs/plugin-react-swc": "^4.1.0",
     "sass": "^1.80.6",
     "vite": "^7.1.9"
