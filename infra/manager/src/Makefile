@@ -6,7 +6,7 @@ build:
 run:
 	FLAG="HCS{test__hanzzz_%>HASH<%}" \
 	CHALLENGE_NAME="test" \
-	TELEGRAM_API_KEY="8355342883:AAF23EskpZxtpiTVoxIPv0j7frh02PliHiw" \
-	TELEGRAM_CHAT_ID="960979575" \
+	TELEGRAM_API_KEY="<your-telegram-api-key>" \
+	TELEGRAM_CHAT_ID="<your-telegram-chat-id>" \
 	CTFD_BASE="http://localhost:9090/" \
 	./manager
