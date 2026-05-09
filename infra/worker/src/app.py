@@ -359,7 +359,7 @@ def delegate(h):
             try:
                 jobs[uid].report = json.loads(content)
                 print(
-                    f"DEBUG: Successfully parsed chal.py output as JSON",
+                    "DEBUG: Successfully parsed chal.py output as JSON",
                     file=sys.stderr,
                 )
                 sys.stdout.flush()
@@ -373,11 +373,11 @@ def delegate(h):
                 sys.stdout.flush()
                 jobs[uid].report = {"anvil_config": {}}
         else:
-            print(f"WARNING: chal.py produced no stdout", file=sys.stderr)
+            print("WARNING: chal.py produced no stdout", file=sys.stderr)
             sys.stdout.flush()
             jobs[uid].report = {"anvil_config": {}}
     except subprocess.TimeoutExpired:
-        print(f"ERROR: chal.py execution timed out after 120 seconds", file=sys.stderr)
+        print("ERROR: chal.py execution timed out after 120 seconds", file=sys.stderr)
         sys.stdout.flush()
         jobs[uid].report = {"anvil_config": {}}
     except Exception as e:
