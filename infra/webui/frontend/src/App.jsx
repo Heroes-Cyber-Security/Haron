@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 import Authentication from './components/Authentication';
@@ -6,40 +6,40 @@ import ChallengePanel from './components/ChallengePanel';
 import InstanceInfo from './components/InstanceInfo';
 
 export const apiClient = axios.create({
-	baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
-	timeout: 60_000
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
+  timeout: 60_000,
 });
 
 const App = () => {
-	const [account, setAccount] = useState({name: "", accessToken: ""});
-	const [instance, setInstance] = useState({id: "", chains: []});
-	const [flag, setFlag] = useState("");
+  const [account, setAccount] = useState({ name: '', accessToken: '' });
+  const [instance, setInstance] = useState({ id: '', chains: [] });
+  const [flag, setFlag] = useState('');
 
-	useEffect(() => {
-		if (account.name == undefined) setInstance({});
-	}, [account]);
+  useEffect(() => {
+    if (account.name == undefined) setInstance({});
+  }, [account]);
 
-	return (
-		<div className="app">
-			<div className="launcher">
-				<div className="div1" style={{"padding": "0"}}>
-					<ChallengePanel
-						account={account}
-						instance={instance}
-						setInstance={setInstance}
-						setFlag={setFlag}
-					/>
-				</div>
-				<div className="div2"></div>
-				<div className="div3" style={{"padding": "0"}}>
-					<InstanceInfo instance={instance} />
-				</div>
-				<div className="div4" style={{"padding": "0"}}>
-					<Authentication account={account} setAccount={setAccount}/>
-				</div>
-			</div>
-		</div>
-	);
+  return (
+    <div className='app'>
+      <div className='launcher'>
+        <div className='div1' style={{ padding: '0' }}>
+          <ChallengePanel
+            account={account}
+            instance={instance}
+            setInstance={setInstance}
+            setFlag={setFlag}
+          />
+        </div>
+        <div className='div2'></div>
+        <div className='div3' style={{ padding: '0' }}>
+          <InstanceInfo instance={instance} />
+        </div>
+        <div className='div4' style={{ padding: '0' }}>
+          <Authentication account={account} setAccount={setAccount} />
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default App;

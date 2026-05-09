@@ -34,7 +34,7 @@ const Markdown = ({ content, className = '' }) => {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={rehypePlugins}
         components={{
-          img: (props) => <img loading="lazy" decoding="async" {...props} />,
+          img: (props) => <img loading='lazy' decoding='async' {...props} />,
         }}
       >
         {sanitizedContent}
