@@ -17,7 +17,7 @@ func CTFDGetMe(pea types.Pea) types.CTFDUser {
 	if err != nil {
 		return types.CTFDUser{Id: -1, Name: "invalid"}
 	}
-	req.Header.Set("Authorization", "Token " + pea.AccessToken)
+	req.Header.Set("Authorization", "Token "+pea.AccessToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	response, err := http.DefaultClient.Do(req)
