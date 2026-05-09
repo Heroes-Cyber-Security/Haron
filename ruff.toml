@@ -1,0 +1,12 @@
+target-version = "py313"
+line-length = 100
+
+[format]
+preview = true
+
+[lint]
+select = ["F", "E", "W", "I"]
+ignore = ["E402"]
+
+[lint.per-file-ignores"]
+"infra/worker/src/app.py" = ["E402"]
