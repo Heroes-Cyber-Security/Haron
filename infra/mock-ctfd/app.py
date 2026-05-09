@@ -1,6 +1,6 @@
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import socket
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HOST = "0.0.0.0"
 PORT = 9090

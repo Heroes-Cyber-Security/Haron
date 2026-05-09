@@ -8,5 +8,5 @@ preview = true
 select = ["F", "E", "W", "I"]
 ignore = ["E402"]
 
-[lint.per-file-ignores"]
+[lint.per-file-ignores]
 "infra/worker/src/app.py" = ["E402"]

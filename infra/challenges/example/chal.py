@@ -1,8 +1,9 @@
-from typing import Dict, Optional, Tuple
 import json
 import os
 import subprocess
 import sys
+from typing import Dict, Optional, Tuple
+
 from web3 import Web3
 
 
@@ -32,19 +33,15 @@ def deploy_contract(w3, account, contract_name, constructor_args=None):
     contract_factory = w3.eth.contract(abi=abi, bytecode=bytecode)
 
     if constructor_args:
-        tx = contract_factory.constructor(*constructor_args).build_transaction(
-            {
-                "from": account.address,
-                "nonce": w3.eth.get_transaction_count(account.address),
-            }
-        )
+        tx = contract_factory.constructor(*constructor_args).build_transaction({
+            "from": account.address,
+            "nonce": w3.eth.get_transaction_count(account.address),
+        })
     else:
-        tx = contract_factory.constructor().build_transaction(
-            {
-                "from": account.address,
-                "nonce": w3.eth.get_transaction_count(account.address),
-            }
-        )
+        tx = contract_factory.constructor().build_transaction({
+            "from": account.address,
+            "nonce": w3.eth.get_transaction_count(account.address),
+        })
 
     signed = account.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
@@ -91,13 +88,11 @@ def start() -> Dict:
 
         contract = deploy_contract(w3, deployer_account, "Setup")
 
-        result_chains.append(
-            {
-                "chainId": chain_id,
-                "rpc": endpoint,
-                "setup_address": contract.address,
-            }
-        )
+        result_chains.append({
+            "chainId": chain_id,
+            "rpc": endpoint,
+            "setup_address": contract.address,
+        })
 
     result = {
         "anvil_config": {

@@ -2,11 +2,6 @@
 from gevent import monkey
 
 monkey.patch_all()
-from typing import Callable, Dict, Union, List
-
-from bottle import get, post, run, request, HTTPError
-from eth_listener import EthListener
-
 import hashlib
 import importlib.util
 import inspect
@@ -19,14 +14,16 @@ import shutil
 import subprocess
 import sys
 import traceback
-from contextlib import redirect_stderr
 import uuid
 import venv
 import zipfile
+from contextlib import redirect_stderr
+from typing import Callable, Dict, List, Union
 from urllib.parse import urlparse
 
+from bottle import HTTPError, get, post, request, run
+from eth_listener import EthListener
 from web3 import Web3
-
 
 CHALLENGE_HASH_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
 
@@ -145,9 +142,7 @@ class Job(object):
             self.new_heads_handler = wrapped_handler
 
     async def start(self, cwd):
-        for idx, (endpoint, chain_id) in enumerate(
-            zip(self.anvil_endpoints, self.chain_ids)
-        ):
+        for idx, (endpoint, chain_id) in enumerate(zip(self.anvil_endpoints, self.chain_ids)):
             self.bind_handlers(cwd, chain_id)
             eth_listener = EthListener(endpoint)
             eth_listener.on("newHeads", self.new_heads_handler)
@@ -171,9 +166,7 @@ class Job(object):
         }
 
 
-def generate_key_from_id(
-    pea_id: str, salt: str = "harondynamicsalt2025"
-) -> tuple[str, str]:
+def generate_key_from_id(pea_id: str, salt: str = "harondynamicsalt2025") -> tuple[str, str]:
     """Generate deterministic private key and address from Pea ID"""
     seed = hashlib.sha256((pea_id + salt).encode()).digest()
     private_key = seed.hex()
@@ -265,9 +258,7 @@ def delegate(h):
             venv.create(venv_dir, clear=True, with_pip=True, symlinks=True)
             pip_executable = os.path.join(venv_dir, "bin", "pip")
             requirements_path = os.path.join(task_dir, "requirements.txt")
-            subprocess.run(
-                [pip_executable, "install", "-r", requirements_path], cwd=task_dir
-            )
+            subprocess.run([pip_executable, "install", "-r", requirements_path], cwd=task_dir)
         except Exception as e:
             print(f"ERROR: Challenge initialization failed: {e}", file=sys.stderr)
             print(f"ERROR: Traceback: {traceback.format_exc()}", file=sys.stderr)
@@ -291,9 +282,7 @@ def delegate(h):
             fund_account(endpoint, setup_address)
             fund_account(endpoint, deployer_address)
         except Exception as e:
-            print(
-                f"Warning: failed to fund account on {endpoint}: {e}", file=sys.stderr
-            )
+            print(f"Warning: failed to fund account on {endpoint}: {e}", file=sys.stderr)
 
     env = os.environ.copy()
     env["PLAYER_PRIVATE_KEY"] = private_key
@@ -345,9 +334,7 @@ def delegate(h):
             print(f"chal.py stderr: {result.stderr}", file=sys.stderr)
 
         if result.returncode != 0:
-            print(
-                f"ERROR: chal.py exited with code {result.returncode}", file=sys.stderr
-            )
+            print(f"ERROR: chal.py exited with code {result.returncode}", file=sys.stderr)
 
             jobs[uid].report = {"anvil_config": {}}
         elif content.strip():
@@ -389,7 +376,7 @@ def delegate(h):
 
     if chains:
         print(f"DEBUG: Found {len(chains)} chains in report", file=sys.stderr)
-    
+
         jobs[uid].report["anvil_config"]["setup_address"] = chains[0]["setup_address"]
     else:
         print(
