@@ -9,7 +9,7 @@ import (
 )
 
 func GenerateFlag(pea types.Pea) string {
-	cfg, err := LoadChallengeConfig(pea.ChallengeHash)
+	cfg, err := types.LoadChallengeConfig(pea.ChallengeHash)
 	if err != nil {
 		return "NO FLAG"
 	}
