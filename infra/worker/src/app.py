@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from gevent import monkey
 
 monkey.patch_all()
