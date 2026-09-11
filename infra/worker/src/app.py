@@ -43,8 +43,88 @@ CONTRACT_ADDRESS_KEY = "OWNABLE_CONTRACT_ADDRESS"
 
 jobs: Dict[str, "Job"] = {}
 active_jobs = set()
-initialized = set()
+prepared = set()
 _instance_secrets: Dict[str, dict] = {}
+
+def challenge_zip_path(h: str) -> str:
+    """The uploaded challenge package, stored once per challenge hash."""
+    return os.path.join(BASE_CACHE_DIR, h, f"{h}.zip")
+
+def challenge_template_dir(h: str) -> str:
+    """Per challenge directory holding the extracted source and the built venv."""
+    return os.path.join(BASE_CACHE_DIR, h, "template")
+
+def instance_dir(h: str, pea_id: str) -> str:
+    """Per instance working directory holding its own copy of the source."""
+    return os.path.join(BASE_CACHE_DIR, f"{h}_{pea_id}")
+
+def shared_python(h: str) -> str:
+    """Interpreter from the challenge venv.
+
+    A venv is not relocatable, so instead of copying it per instance every
+    instance runs the single venv built when the challenge was first prepared.
+    """
+    return os.path.join(challenge_template_dir(h), ".venv", "bin", "python")
+
+def prepare_challenge(h: str) -> None:
+    """Extract the package and build the venv once per challenge hash.
+
+    The cached template is verified on disk, so a wiped cache or a replaced
+    volume is rebuilt instead of leaving every instance pointing at a missing
+    interpreter.
+    """
+    template_dir = challenge_template_dir(h)
+    interpreter = os.path.join(template_dir, ".venv", "bin", "python")
+    source = os.path.join(template_dir, "chal.py")
+
+    if h in prepared and os.path.exists(interpreter) and os.path.exists(source):
+        return
+
+    prepared.discard(h)
+    os.makedirs(template_dir, exist_ok=True)
+
+    zip_path = os.path.join(template_dir, f"{h}.zip")
+    base_zip_path = challenge_zip_path(h)
+    if os.path.exists(base_zip_path):
+        shutil.copy(base_zip_path, zip_path)
+
+    with zipfile.ZipFile(zip_path, "r") as zr:
+        zr.extractall(template_dir)
+
+    venv_dir = os.path.join(template_dir, ".venv")
+    venv.create(venv_dir, clear=True, with_pip=True, symlinks=True)
+    pip_executable = os.path.join(venv_dir, "bin", "pip")
+    requirements_path = os.path.join(template_dir, "requirements.txt")
+    subprocess.run([pip_executable, "install", "-r", requirements_path], cwd=template_dir)
+
+    prepared.add(h)
+
+def prepare_instance(h: str, pea_id: str) -> str:
+    """Give one instance its own copy of the challenge source.
+
+    Preparation is per challenge, but the working directory is per instance, so
+    the second player of a challenge gets the same treatment as the first.
+    """
+    prepare_challenge(h)
+
+    work_dir = instance_dir(h, pea_id)
+    os.makedirs(work_dir, exist_ok=True)
+
+    if os.path.exists(os.path.join(work_dir, "chal.py")):
+        return work_dir
+
+    zip_path = challenge_zip_path(h)
+    if not os.path.exists(zip_path):
+        zip_path = os.path.join(challenge_template_dir(h), f"{h}.zip")
+
+    with zipfile.ZipFile(zip_path, "r") as zr:
+        for member in zr.namelist():
+            # The venv belongs to the shared template, never to an instance.
+            if member.split("/", 1)[0] == ".venv":
+                continue
+            zr.extract(member, work_dir)
+
+    return work_dir
 
 
 class InstanceDetail:
@@ -184,19 +264,31 @@ def fund_account(anvil_endpoint: str, address: str, amount_ether: float = 10000)
 
 
 def extract_pea_id(anvil_endpoint: str) -> str:
-    """Extract Pea ID from anvil endpoint URL"""
+    """Extract the Pea ID from an anvil endpoint URL.
+
+    The orchestrator serves /anvil/{pea_id} and /anvil/{pea_id}/{chain_id}, so
+    the id is the segment after `anvil`. Taking the last segment instead would
+    return the chain id, which makes every instance share one pea id and
+    therefore one player key and one task directory.
+    """
     parsed = urlparse(anvil_endpoint)
-    path_parts = parsed.path.strip("/").split("/")
+    path_parts = [part for part in parsed.path.strip("/").split("/") if part]
+
+    if "anvil" in path_parts:
+        index = path_parts.index("anvil")
+        if index + 1 < len(path_parts):
+            return path_parts[index + 1]
+
     return path_parts[-1] if path_parts else ""
 
 
-def generate_report(cwd) -> Union[dict, Report]:
+def generate_report(cwd, challenge_hash) -> Union[dict, Report]:
     """
     Note to myself: an empty report does nothing, a non-empty report overwrites settings
     chal.py should print out report only
     """
     try:
-        python_executable = os.path.join(cwd, ".venv", "bin", "python")
+        python_executable = shared_python(challenge_hash)
         script_path = os.path.join(cwd, "chal.py")
         result = subprocess.run(
             [python_executable, script_path],
@@ -238,32 +330,16 @@ def delegate(h):
 
     chain_ids = [int(ep.split("/")[-1]) for ep in anvil_endpoints]
     pea_id = extract_pea_id(anvil_endpoints[0])
-    task_dir = os.path.join(BASE_CACHE_DIR, f"{h}_{pea_id}")
 
     jobs[uid] = Job(uid, h, anvil_endpoints, chain_ids)
 
-    if h not in initialized:
-        initialized.add(h)
-        try:
-            os.makedirs(task_dir, exist_ok=True)
-            zip_path = os.path.join(task_dir, f"{h}.zip")
-
-            base_zip_path = os.path.join(BASE_CACHE_DIR, h, f"{h}.zip")
-            if os.path.exists(base_zip_path):
-                shutil.copy(base_zip_path, zip_path)
-
-            with zipfile.ZipFile(zip_path, "r") as zr:
-                zr.extractall(task_dir)
-            venv_dir = os.path.join(task_dir, ".venv")
-            venv.create(venv_dir, clear=True, with_pip=True, symlinks=True)
-            pip_executable = os.path.join(venv_dir, "bin", "pip")
-            requirements_path = os.path.join(task_dir, "requirements.txt")
-            subprocess.run([pip_executable, "install", "-r", requirements_path], cwd=task_dir)
-        except Exception as e:
-            print(f"ERROR: Challenge initialization failed: {e}", file=sys.stderr)
-            print(f"ERROR: Traceback: {traceback.format_exc()}", file=sys.stderr)
-            initialized.remove(h)
-            return dict()
+    try:
+        task_dir = prepare_instance(h, pea_id)
+    except Exception as e:
+        print(f"ERROR: Challenge initialization failed: {e}", file=sys.stderr)
+        print(f"ERROR: Traceback: {traceback.format_exc()}", file=sys.stderr)
+        prepared.discard(h)
+        return dict()
 
     pea_id = extract_pea_id(anvil_endpoints[0])
     private_key, setup_address = generate_key_from_id(pea_id)
@@ -308,7 +384,7 @@ def delegate(h):
 
     print(f"DEBUG: Calling chal.py with CHAIN_IDS={env['CHAIN_IDS']}", file=sys.stderr)
 
-    python_executable = os.path.join(task_dir, ".venv", "bin", "python")
+    python_executable = shared_python(h)
     script_path = os.path.join(task_dir, "chal.py")
 
     print(
@@ -400,7 +476,7 @@ def delegate(h):
 def start_job(uid):
     job = jobs[uid]
     pea_id = extract_pea_id(job.anvil_endpoints[0])
-    task_dir = os.path.join(BASE_CACHE_DIR, f"{job.task}_{pea_id}")
+    task_dir = instance_dir(job.task, pea_id)
 
     active_jobs.add(job)
     job.start(task_dir)
@@ -434,7 +510,7 @@ def validate(uid):
 
     job = jobs[uid]
     pea_id = extract_pea_id(job.anvil_endpoints[0])
-    task_dir = os.path.join(BASE_CACHE_DIR, f"{job.task}_{pea_id}")
+    task_dir = instance_dir(job.task, pea_id)
 
     module_name = f"chal_{uid}"
     module_path = os.path.join(task_dir, "chal.py")

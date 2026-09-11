@@ -71,6 +71,57 @@ async fn spawn_supervised_node(
 #[derive(serde::Deserialize)]
 struct DeployQuery {
     chains: Option<String>,
+    block_times: Option<String>,
+    tx_orders: Option<String>,
+}
+
+/// Splits a comma separated query parameter into trimmed, non-empty values.
+fn split_csv(value: Option<&str>) -> Vec<String> {
+    match value {
+        Some(raw) => raw
+            .split(',')
+            .map(|part| part.trim().to_string())
+            .filter(|part| !part.is_empty())
+            .collect(),
+        None => Vec::new(),
+    }
+}
+
+/// Parses the `chains` query parameter into chain ids, defaulting to chain 1.
+fn parse_chain_ids(chains: Option<&str>) -> Vec<u64> {
+    let ids: Vec<u64> = chains
+        .unwrap_or("")
+        .split(',')
+        .filter_map(|part| part.trim().parse().ok())
+        .collect();
+
+    if ids.is_empty() { vec![1] } else { ids }
+}
+
+/// Resolves the per-chain node parameters for a deploy request.
+///
+/// `block_times` and `tx_orders` are parallel to `chains`. Entries that are
+/// missing, shorter than `chains`, or unparseable fall back to the defaults
+/// instead of failing the deploy.
+fn resolve_chain_params(
+    chain_ids: &[u64],
+    block_times: Option<&str>,
+    tx_orders: Option<&str>,
+) -> Vec<(u64, Option<String>)> {
+    let block_times = split_csv(block_times);
+    let tx_orders = split_csv(tx_orders);
+
+    chain_ids
+        .iter()
+        .enumerate()
+        .map(|(index, _)| {
+            let block_time = block_times
+                .get(index)
+                .and_then(|value| value.parse::<u64>().ok())
+                .unwrap_or(anvil::DEFAULT_BLOCK_TIME);
+            (block_time, tx_orders.get(index).cloned())
+        })
+        .collect()
 }
 
 #[post("/deploy/{id}")]
@@ -81,16 +132,7 @@ async fn service_deploy(
 ) -> impl Responder {
     let id = params.into_inner();
 
-    let chain_ids: Vec<u64> = match query.chains.as_deref() {
-        Some(chains_str) => {
-            let ids: Vec<u64> = chains_str
-                .split(',')
-                .filter_map(|s| s.trim().parse().ok())
-                .collect();
-            if ids.is_empty() { vec![1] } else { ids }
-        }
-        None => vec![1],
-    };
+    let chain_ids: Vec<u64> = parse_chain_ids(query.chains.as_deref());
 
     let mut unique_check = std::collections::HashSet::new();
     for chain_id in &chain_ids {
@@ -99,6 +141,12 @@ async fn service_deploy(
             return "DUPLICATE_CHAIN_ID";
         }
     }
+
+    let chain_params = resolve_chain_params(
+        &chain_ids,
+        query.block_times.as_deref(),
+        query.tx_orders.as_deref(),
+    );
 
     let mut nodes = state.nodes.lock().await;
 
@@ -109,8 +157,8 @@ async fn service_deploy(
     let mut deployed_nodes: std::collections::HashMap<u64, SingleNodeEntry> =
         std::collections::HashMap::new();
 
-    for chain_id in &chain_ids {
-        let config = anvil::create_config(*chain_id);
+    for (chain_id, (block_time, tx_order)) in chain_ids.iter().zip(chain_params) {
+        let config = anvil::create_config(*chain_id, block_time, tx_order.as_deref());
         match spawn_supervised_node(config, *chain_id).await {
             Ok(entry) => {
                 deployed_nodes.insert(*chain_id, entry);
@@ -375,4 +423,60 @@ async fn main() -> std::io::Result<()> {
     .bind("0.0.0.0:8080")?
     .run()
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_chain_ids_defaults_to_one() {
+        assert_eq!(parse_chain_ids(None), vec![1]);
+        assert_eq!(parse_chain_ids(Some("")), vec![1]);
+        assert_eq!(parse_chain_ids(Some("abc")), vec![1]);
+    }
+
+    #[test]
+    fn parse_chain_ids_reads_list() {
+        assert_eq!(parse_chain_ids(Some("1,2,3")), vec![1, 2, 3]);
+        assert_eq!(parse_chain_ids(Some(" 7 , 9 ")), vec![7, 9]);
+    }
+
+    #[test]
+    fn resolve_chain_params_defaults_when_absent() {
+        let params = resolve_chain_params(&[1], None, None);
+        assert_eq!(params, vec![(anvil::DEFAULT_BLOCK_TIME, None)]);
+    }
+
+    #[test]
+    fn resolve_chain_params_reads_parallel_lists() {
+        let params = resolve_chain_params(&[1, 42], Some("5,2"), Some("fees,fifo"));
+        assert_eq!(
+            params,
+            vec![(5, Some("fees".to_string())), (2, Some("fifo".to_string()))]
+        );
+    }
+
+    #[test]
+    fn resolve_chain_params_handles_short_lists() {
+        // Only the first chain is described; the rest fall back to defaults.
+        let params = resolve_chain_params(&[1, 2, 3], Some("5"), Some("fifo"));
+        assert_eq!(params[0], (5, Some("fifo".to_string())));
+        assert_eq!(params[1], (anvil::DEFAULT_BLOCK_TIME, None));
+        assert_eq!(params[2], (anvil::DEFAULT_BLOCK_TIME, None));
+    }
+
+    #[test]
+    fn resolve_chain_params_handles_unparseable_input() {
+        let params = resolve_chain_params(&[1, 2], Some("abc,-1"), Some("bogus,"));
+        assert_eq!(params[0], (anvil::DEFAULT_BLOCK_TIME, Some("bogus".to_string())));
+        // The empty tx_order entry is dropped by split_csv, so it falls back.
+        assert_eq!(params[1], (anvil::DEFAULT_BLOCK_TIME, None));
+    }
+
+    #[test]
+    fn resolve_chain_params_preserves_explicit_zero() {
+        let params = resolve_chain_params(&[1], Some("0"), None);
+        assert_eq!(params, vec![(0, None)]);
+    }
 }

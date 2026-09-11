@@ -78,6 +78,23 @@ func convertRpcUrls(chains []types.ChainInfo) []types.ChainInfo {
 	return result
 }
 
+// buildInstanceResponse renders the instance payload handed to the player.
+// A single chain is enough to expose the RPC list: the webui reads the rpc from
+// `chains`, and its fallback URL is not proxied by nginx.
+func buildInstanceResponse(pea types.Pea) map[string]any {
+	response := map[string]any{
+		"id":                 pea.Id,
+		"setup_address":      pea.SetupAddress,
+		"player_private_key": pea.PlayerPrivateKey,
+	}
+
+	if len(pea.Chains) >= 1 {
+		response["chains"] = convertRpcUrls(pea.Chains)
+	}
+
+	return response
+}
+
 func main() {
 	e := echo.New()
 	e.HideBanner = true
@@ -145,15 +162,7 @@ func main() {
 			if pea.ChallengeHash != challengeHash {
 				return Jsonify(c, map[string]any{"error": "Error: You have existing instance for another challenge"})
 			}
-			response := map[string]any{
-				"id":                 pea.Id,
-				"setup_address":      pea.SetupAddress,
-				"player_private_key": pea.PlayerPrivateKey,
-			}
-			if len(pea.Chains) > 1 {
-				response["chains"] = convertRpcUrls(pea.Chains)
-			}
-			return Jsonify(c, response)
+			return Jsonify(c, buildInstanceResponse(pea))
 		}
 		peasMu.RUnlock()
 
@@ -170,7 +179,7 @@ func main() {
 			ChainIds:      config.GetChainIds(),
 		}
 
-		if err := interop.Deploy(pea); err != nil {
+		if err := interop.Deploy(pea, config.NormalizedChains()); err != nil {
 			log.Printf("main: Deploy failed: %v", err)
 			return Jsonify(c, map[string]any{"error": "Failed to deploy instance"})
 		}
@@ -188,17 +197,7 @@ func main() {
 
 		integration.NotifyPeaCreationTelegram(pea, playerIP)
 
-		response := map[string]any{
-			"id":                 pea.Id,
-			"setup_address":      pea.SetupAddress,
-			"player_private_key": pea.PlayerPrivateKey,
-		}
-
-		if len(pea.Chains) > 1 {
-			response["chains"] = convertRpcUrls(pea.Chains)
-		}
-
-		return Jsonify(c, response)
+		return Jsonify(c, buildInstanceResponse(pea))
 	})
 
 	rateLimited.GET("/flag", func(c echo.Context) error {
