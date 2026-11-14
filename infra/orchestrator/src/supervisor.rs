@@ -1,7 +1,7 @@
 use crate::anvil::{
     self, EthApi, EthSubscription, HeadlessNodeHandle, LogsSubscription, NodeConfig,
 };
-use alloy_rpc_types::{
+use alloy_rpc_types::eth::{
     FilteredParams,
     pubsub::{Params as SubscriptionParams, SubscriptionKind},
 };
@@ -213,6 +213,11 @@ fn create_subscription(
                 SubscriptionParams::None => None,
                 SubscriptionParams::Logs(filter) => Some(filter),
                 SubscriptionParams::Bool(_) => None,
+                SubscriptionParams::TransactionReceipts(_) => {
+                    return Err(RpcError::invalid_params(
+                        "Expected log filter params for logs subscription",
+                    ));
+                }
             };
 
             let params = FilteredParams::new(filter.map(|b| *b));
@@ -221,6 +226,7 @@ fn create_subscription(
                 storage: api.storage_info(),
                 filter: params,
                 queued: VecDeque::default(),
+                skipped: Default::default(),
                 id: id.clone(),
             }))
         }
@@ -237,13 +243,16 @@ fn create_subscription(
             SubscriptionParams::Bool(false) | SubscriptionParams::None => {
                 EthSubscription::PendingTransactions(api.new_ready_transactions(), id.clone())
             }
-            SubscriptionParams::Logs(_) => {
+            SubscriptionParams::Logs(_) | SubscriptionParams::TransactionReceipts(_) => {
                 return Err(RpcError::invalid_params(
                     "Expected boolean parameter for newPendingTransactions",
                 ));
             }
         },
         SubscriptionKind::Syncing => {
+            return Err(RpcError::internal_error_with("Not implemented"));
+        }
+        SubscriptionKind::TransactionReceipts => {
             return Err(RpcError::internal_error_with("Not implemented"));
         }
     };

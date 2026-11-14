@@ -1,13 +1,22 @@
 pub use anvil::NodeConfig;
 pub use anvil::cmd::NodeArgs;
-pub use anvil::eth::EthApi;
+pub use anvil::eth::EthApi as AnvilEthApi;
 pub use anvil::eth::pool::transactions::TransactionOrder;
-pub use anvil::pubsub::{EthSubscription, LogsSubscription};
+pub use anvil::pubsub::EthSubscription as AnvilEthSubscription;
+pub use anvil::pubsub::LogsSubscription as AnvilLogsSubscription;
 
 use anvil::NodeHandle;
 use clap_builder::Parser;
 use eyre::Result;
+use foundry_primitives::FoundryNetwork;
 use std::ops::{Deref, DerefMut};
+
+/// The concrete Anvil node API (generic over the foundry network).
+pub type EthApi = AnvilEthApi<FoundryNetwork>;
+/// A live eth pubsub stream, materialized for the foundry network.
+pub type EthSubscription = AnvilEthSubscription<FoundryNetwork>;
+/// Log subscription stream used by `EthSubscription::Logs`.
+pub type LogsSubscription = AnvilLogsSubscription<FoundryNetwork>;
 
 /// Interval mining period used when a chain does not request one.
 pub const DEFAULT_BLOCK_TIME: u64 = 1;
@@ -21,45 +30,13 @@ impl HeadlessNodeHandle {
         Self { inner: Some(inner) }
     }
 
-    fn fire_shutdown_signal(inner: &mut NodeHandle) {
-        if let Some(signal) = inner.shutdown_signal_mut().take() {
-            if signal.fire().is_err() {
-                eprintln!("failed to fire shutdown signal");
-            }
-        }
-    }
-
-    fn abort_servers(inner: &mut NodeHandle) {
-        for server in inner.servers.drain(..) {
-            server.abort();
-        }
-    }
-
-    async fn abort_and_join_servers(inner: &mut NodeHandle) {
-        for server in inner.servers.drain(..) {
-            server.abort();
-            match server.await {
-                Ok(Ok(())) => {}
-                Ok(Err(err)) => eprintln!("anvil server exited with error: {err:?}"),
-                Err(err) if err.is_cancelled() => {}
-                Err(err) => eprintln!("anvil server join error: {err:?}"),
-            }
-        }
-    }
-
+    /// Terminates the managed Anvil instance.
+    ///
+    /// Foundry v1.9 keeps `NodeHandle`'s `servers`/`node_service` fields private;
+    /// its `Drop` implementation fires the shutdown signal and aborts the node
+    /// service, server, and ipc tasks, so we can rely on dropping the handle.
     pub async fn shutdown(mut self) {
-        if let Some(mut inner) = self.inner.take() {
-            Self::fire_shutdown_signal(&mut inner);
-            Self::abort_and_join_servers(&mut inner).await;
-
-            inner.node_service.abort();
-            match (&mut inner.node_service).await {
-                Ok(Ok(())) => {}
-                Ok(Err(err)) => eprintln!("anvil node service exited with error: {err:?}"),
-                Err(err) if err.is_cancelled() => {}
-                Err(err) => eprintln!("anvil node service join error: {err:?}"),
-            }
-        }
+        drop(self.inner.take());
     }
 }
 
@@ -83,25 +60,13 @@ impl DerefMut for HeadlessNodeHandle {
 
 impl Drop for HeadlessNodeHandle {
     fn drop(&mut self) {
-        if let Some(mut inner) = self.inner.take() {
-            Self::fire_shutdown_signal(&mut inner);
-            Self::abort_servers(&mut inner);
-
-            inner.node_service.abort();
-        }
+        drop(self.inner.take());
     }
 }
 
 /// Spawns an Anvil node without launching the HTTP/WS server tasks
 pub async fn try_spawn(config: NodeConfig) -> Result<(EthApi, HeadlessNodeHandle)> {
-    let (api, mut handle) = anvil::try_spawn(config).await?;
-
-    if !handle.servers.is_empty() {
-        for server in handle.servers.drain(..) {
-            server.abort();
-            let _ = server.await;
-        }
-    }
+    let (api, handle) = anvil::try_spawn(config).await?;
 
     Ok((api, HeadlessNodeHandle::new(handle)))
 }

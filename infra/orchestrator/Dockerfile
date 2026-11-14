@@ -8,9 +8,8 @@ RUN useradd -ms /bin/bash ctf
 USER ctf
 WORKDIR /home/ctf
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-RUN /home/ctf/.cargo/bin/rustup update 1.90.0
-RUN /home/ctf/.cargo/bin/rustup toolchain install 1.90.0
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --default-toolchain 1.100.0 --profile minimal
+RUN /home/ctf/.cargo/bin/rustup component add rust-std
 
 # copy manifests first to cache dependency downloads
 COPY Cargo.toml Cargo.lock /home/ctf/

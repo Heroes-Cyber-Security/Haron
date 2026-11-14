@@ -2,20 +2,69 @@
 name = "orchestrator"
 version = "0.1.0"
 edition = "2024"
-author = "Hanz <hi@hanz.dev>"
 
 [dependencies]
-actix = "0.13"
-actix-web = "4.11.0"
-actix-web-actors = "4.3"
-anvil = { git = "https://github.com/foundry-rs/foundry", version = "1.4.0", rev = "b7d4970e49ad61ab07ef92f6ad0213b8782a2e46" }
-anvil-core = { git = "https://github.com/foundry-rs/foundry", version = "1.4.0", rev = "b7d4970e49ad61ab07ef92f6ad0213b8782a2e46" }
-anvil-rpc = { git = "https://github.com/foundry-rs/foundry", version = "1.4.0", rev = "b7d4970e49ad61ab07ef92f6ad0213b8782a2e46" }
-eyre = "0.6"
-tokio = { version = "1", features = ["sync"] }
-libc = "0.2"
-serde_json = "1"
-serde = { version = "1", features = ["derive"] }
-futures-util = "0.3"
-alloy-rpc-types = "1.0.37"
-clap_builder = "4.5.48"
+actix = "0.13.6"
+actix-web = "4.19.0"
+actix-web-actors = "4.3.1"
+anvil = { git = "https://github.com/foundry-rs/foundry", version = "1.9.0", rev = "6056c5845d34205a83cf7108042adb137325c9df" }
+anvil-core = { git = "https://github.com/foundry-rs/foundry", version = "1.9.0", rev = "6056c5845d34205a83cf7108042adb137325c9df" }
+anvil-rpc = { git = "https://github.com/foundry-rs/foundry", version = "1.9.0", rev = "6056c5845d34205a83cf7108042adb137325c9df" }
+alloy-rpc-types = "2.5.0"
+eyre = "0.6.14"
+tokio = { version = "1.54.1", features = ["sync"] }
+libc = "0.2.191"
+serde_json = "1.0.154"
+serde = { version = "1.0.229", features = ["derive"] }
+futures-util = "0.3.34"
+clap_builder = "4.6.7"
+# Name the concrete anvil EthApi<FoundryNetwork> type in this crate's API.
+foundry-primitives = { git = "https://github.com/foundry-rs/foundry", version = "1.9.0", rev = "6056c5845d34205a83cf7108042adb137325c9df" }
+
+# The commonware-* macro/formatting crates are not pinned by foundry's workspace
+# (only codec/cryptography/math/parallel/utils are). A fresh resolution pulls
+# them at 2026.10.0, whose FixedArray derive references API missing from the
+# pinned commonware-codec 2026.9.0, breaking the build.
+commonware-codec-macros = "=2026.9.0"
+commonware-formatting = "=2026.9.0"
+commonware-macros = "=2026.9.0"
+commonware-macros-impl = "=2026.9.0"
+# foundry v1.9.0's lockfile pins alloy-trie 0.9.8; 0.9.9 adds a HashBuilder
+# field that the pinned reth rev was not updated for.
+alloy-trie = "=0.9.8"
+# alloy-eip7928 0.4.13 makes CodeChange::new_code private (accessor only);
+# foundry-evm-core bal.rs at the pinned rev expects the public field (0.4.11).
+alloy-eip7928 = "=0.4.11"
+# foundry-evm-fuzz strategies are written against proptest 1.11 / rand 0.9.5;
+# newer resolutions (proptest 1.12, rand 0.9.2) change TestRng's Rng impl.
+proptest = "=1.11.0"
+rand = "=0.9.5"
+
+# Consuming foundry crates from git does not inherit the foundry workspace's
+# [patch.crates-io] resolver overrides, so the orchestrator must declare the
+# same patches or crates.io versions of foundry-core/alloy-core crates can
+# conflict with the pinned git crates (e.g. libsqlite3-sys version clashes).
+[patch.crates-io]
+solar-compiler = { git = "https://github.com/paradigmxyz/solar", rev = "a2b4435466bff1b91459a1bc64b04e5e8144ed9f" }
+solar-lint = { git = "https://github.com/paradigmxyz/solar", rev = "a2b4435466bff1b91459a1bc64b04e5e8144ed9f" }
+foundry-wallets = { git = "https://github.com/foundry-rs/foundry-core", rev = "1534b92a9acaf436d5874e1808f9faeb7641718f" }
+foundry-compilers = { git = "https://github.com/foundry-rs/foundry-core", rev = "1534b92a9acaf436d5874e1808f9faeb7641718f" }
+foundry-block-explorers = { git = "https://github.com/foundry-rs/foundry-core", rev = "1534b92a9acaf436d5874e1808f9faeb7641718f" }
+foundry-fork-db = { git = "https://github.com/foundry-rs/foundry-core", rev = "1534b92a9acaf436d5874e1808f9faeb7641718f" }
+alloy-dyn-abi = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-json-abi = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-primitives = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-sol-macro = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-sol-macro-expander = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-sol-macro-input = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-sol-type-parser = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-sol-types = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+syn-solidity = { git = "https://github.com/alloy-rs/core", rev = "1e17055e111d087cd303186f9c4eeaee9af11684" }
+alloy-op-evm = { git = "https://github.com/foundry-rs/optimism", rev = "206d26cedb9d861b983d89fc71e1122187dfa877" }
+op-alloy-consensus = { git = "https://github.com/foundry-rs/optimism", rev = "206d26cedb9d861b983d89fc71e1122187dfa877" }
+op-alloy-network = { git = "https://github.com/foundry-rs/optimism", rev = "206d26cedb9d861b983d89fc71e1122187dfa877" }
+op-alloy-rpc-types = { git = "https://github.com/foundry-rs/optimism", rev = "206d26cedb9d861b983d89fc71e1122187dfa877" }
+alloy-op-hardforks = { git = "https://github.com/foundry-rs/optimism", rev = "206d26cedb9d861b983d89fc71e1122187dfa877" }
+tempo-primitives = { git = "https://github.com/tempoxyz/tempo", rev = "55a96bad10cb3e171f1b28dfd6e21bea957df0e4" }
+tempo-alloy = { git = "https://github.com/tempoxyz/tempo", rev = "55a96bad10cb3e171f1b28dfd6e21bea957df0e4" }
+tempo-contracts = { git = "https://github.com/tempoxyz/tempo", rev = "55a96bad10cb3e171f1b28dfd6e21bea957df0e4" }
