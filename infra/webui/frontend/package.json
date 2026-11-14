@@ -14,21 +14,20 @@
   "author": "Hanz <hi@hanz.dev>",
   "license": "MIT",
   "dependencies": {
-    "animejs": "^3.2.2",
-    "axios": "^1.7.9",
-    "@shikijs/langs": "^3.13.0",
-    "@shikijs/themes": "^3.13.0",
-    "react-markdown": "^9.0.3",
-    "remark-gfm": "^4.0.0",
-    "@shikijs/rehype": "^1.27.0",
-    "shiki": "^3.10.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@shikijs/langs": "^4.6.0",
+    "@shikijs/themes": "^4.6.0",
+    "@shikijs/rehype": "^4.6.0",
+    "axios": "^1.21.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "shiki": "^4.6.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.0",
-    "@vitejs/plugin-react-swc": "^4.1.0",
-    "sass": "^1.80.6",
-    "vite": "^7.1.9"
+    "@biomejs/biome": "^2.6.7",
+    "@vitejs/plugin-react-swc": "^4.3.3",
+    "sass": "^1.108.2",
+    "vite": "^8.3.8"
   }
 }

@@ -1,10 +1,12 @@
-import { createPortal } from 'react-dom';
-import '../styles/notification.scss';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
+
+import '../styles/notification.scss';
 
 const Notification = ({ message, isFlag, onClose, onCopy }) => {
-  if (!message) return null;
   const [isCopied, setCopied] = useState(false);
+
+  if (!message) return null;
 
   const handleCopy = async () => {
     if (onCopy) {
@@ -16,7 +18,12 @@ const Notification = ({ message, isFlag, onClose, onCopy }) => {
 
   return createPortal(
     <>
-      <div className='notification_overlay' onClick={onClose}></div>
+      <button
+        type='button'
+        className='notification_overlay'
+        aria-label='Close'
+        onClick={onClose}
+      ></button>
       <div className='notification_modal'>
         <div className='notification_text'>
           <b>{isFlag ? 'Flag Retrieved!' : 'Notification'}</b>
@@ -24,16 +31,16 @@ const Notification = ({ message, isFlag, onClose, onCopy }) => {
         </div>
         {isFlag && (
           <div className='notification_actions'>
-            <button className='copy_button' onClick={handleCopy}>
+            <button type='button' className='copy_button' onClick={handleCopy}>
               {isCopied ? 'Copied!' : 'Copy Flag'}
             </button>
-            <button className='close_button' onClick={onClose}>
+            <button type='button' className='close_button' onClick={onClose}>
               Close
             </button>
           </div>
         )}
         {!isFlag && (
-          <button className='notification_close' onClick={onClose}>
+          <button type='button' className='notification_close' onClick={onClose}>
             Close
           </button>
         )}

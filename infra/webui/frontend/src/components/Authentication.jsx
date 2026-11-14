@@ -60,7 +60,7 @@ const Authentication = ({ account, setAccount }) => {
       <form style={{ height: '100%' }} onSubmit={handleSubmit}>
         <div style={{ padding: '1.5em' }}>
           <div className='input-group'>
-            <label>Hi {account.name}</label>
+            <span>Hi {account.name}</span>
           </div>
         </div>
         <input type='submit' value='Log Out' />

@@ -393,6 +393,24 @@ form {
 	}
 }
 
+.instance_body_container {
+	.instance_body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--element-gap);
+
+		> div {
+			display: flex;
+
+			> input[type=submit] {
+				padding-left: 2em;
+				padding-right: 2em;
+				width: max-content;
+			}
+		}
+	}
+}
+
 .instance_container {
 	display: flex;
 	flex-direction: column;
@@ -431,24 +449,6 @@ form {
 
 		.instance_body_disabled {
 			display: flex;
-		}
-	}
-}
-
-.instance_body_container {
-	.instance_body {
-		display: flex;
-		flex-direction: column;
-		gap: var(--element-gap);
-
-		> div {
-			display: flex;
-
-			> input[type=submit] {
-				padding-left: 2em;
-				padding-right: 2em;
-				width: max-content;
-			}
 		}
 	}
 }
