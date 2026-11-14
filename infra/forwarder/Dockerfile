@@ -8,7 +8,7 @@ RUN useradd -ms /bin/bash ctf
 USER ctf
 WORKDIR /home/ctf
 
-RUN wget https://go.dev/dl/go1.25.1.linux-amd64.tar.gz -O go.tar.gz
+RUN wget https://go.dev/dl/go1.27.4.linux-amd64.tar.gz -O go.tar.gz
 RUN tar xzf go.tar.gz
 
 # Compile sources
