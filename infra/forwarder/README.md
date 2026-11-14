@@ -2,6 +2,8 @@
 
 Forwards Ethereum JSON-RPC traffic to an orchestrator while exposing both HTTP and WebSocket entrypoints under `/eth/{id}`. Requests are routed to `http://orchestrator:8080/anvil/{id}` and WebSocket connections support subscription flows such as `eth_subscribe`.
 
+The forwarder is the player-facing RPC gate: the webui nginx routes both `/anvil/` and `/eth/` here, and every JSON-RPC method is checked against a denylist (HTTP and WebSocket, single and batch) before it reaches the orchestrator.
+
 ### Configuration
 
 Environment variables:

@@ -1,2 +1,3 @@
  - 40000: manager
  - 40001: forwarder
+ - 57254: webui
