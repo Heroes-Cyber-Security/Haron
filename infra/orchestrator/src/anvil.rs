@@ -77,7 +77,15 @@ pub async fn try_spawn(config: NodeConfig) -> Result<(EthApi, HeadlessNodeHandle
 /// `--block-time` entirely so the node mines on demand instead of on a timer.
 /// `tx_order` selects the mempool ordering; an absent or unrecognised value
 /// leaves the anvil default in place rather than failing the deploy.
-pub fn create_config(chain_id: u64, block_time: u64, tx_order: Option<&str>) -> NodeConfig {
+///
+/// `hooks` attaches the challenge's genesis document and Python-backed
+/// precompiles for this chain, when the challenge declares any.
+pub fn create_config(
+    chain_id: u64,
+    block_time: u64,
+    tx_order: Option<&str>,
+    hooks: Option<&crate::hooks::HookConfig>,
+) -> NodeConfig {
     let chain_id_str = chain_id.to_string();
     let block_time_str = block_time.to_string();
 
@@ -106,6 +114,31 @@ pub fn create_config(chain_id: u64, block_time: u64, tx_order: Option<&str>) -> 
     config.max_persisted_states = Some(0);
     config.host.clear();
 
+    if let Some(hooks) = hooks {
+        if let Some(genesis) = hooks.genesis.get(&chain_id) {
+            // Anvil derives the active hardfork from the genesis timestamp, so a
+            // document without one (the common case) would otherwise pin the
+            // chain to Frontier and disable STATICCALL, PUSH0 and friends.
+            if genesis.timestamp == 0 {
+                config.genesis_timestamp = Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|elapsed| elapsed.as_secs())
+                        .unwrap_or(0),
+                );
+            }
+            config.genesis = Some(genesis.clone());
+        }
+
+        if let Some(addresses) = hooks.precompiles.get(&chain_id) {
+            if let Some(factory) =
+                crate::hooks::PythonPrecompileFactory::new(hooks, chain_id, addresses.clone())
+            {
+                config.precompile_factory = Some(std::sync::Arc::new(factory));
+            }
+        }
+    }
+
     config
 }
 
@@ -116,24 +149,24 @@ mod tests {
 
     #[test]
     fn create_config_honours_block_time() {
-        let config = create_config(1, 5, None);
+        let config = create_config(1, 5, None, None);
         assert_eq!(config.block_time, Some(Duration::from_secs(5)));
     }
 
     #[test]
     fn create_config_omits_block_time_when_zero() {
-        let config = create_config(1, 0, None);
+        let config = create_config(1, 0, None, None);
         assert_eq!(config.block_time, None);
     }
 
     #[test]
     fn create_config_applies_tx_order() {
         assert_eq!(
-            create_config(1, 1, Some("fifo")).transaction_order,
+            create_config(1, 1, Some("fifo"), None).transaction_order,
             TransactionOrder::Fifo
         );
         assert_eq!(
-            create_config(1, 1, Some("fees")).transaction_order,
+            create_config(1, 1, Some("fees"), None).transaction_order,
             TransactionOrder::Fees
         );
     }
@@ -141,21 +174,70 @@ mod tests {
     #[test]
     fn create_config_keeps_default_on_unknown_tx_order() {
         assert_eq!(
-            create_config(1, 1, Some("bogus")).transaction_order,
+            create_config(1, 1, Some("bogus"), None).transaction_order,
             TransactionOrder::default()
         );
         assert_eq!(
-            create_config(1, 1, None).transaction_order,
+            create_config(1, 1, None, None).transaction_order,
             TransactionOrder::default()
         );
     }
 
     #[test]
     fn create_config_keeps_safety_settings() {
-        let config = create_config(1, 5, Some("fees"));
+        let config = create_config(1, 5, Some("fees"), None);
         assert!(config.silent);
         assert!(!config.enable_tracing);
         assert!(config.no_storage_caching);
         assert_eq!(config.max_persisted_states, Some(0));
+    }
+
+    #[test]
+    fn create_config_attaches_genesis_for_the_chain() {
+        let mut genesis = std::collections::HashMap::new();
+        genesis.insert(1, alloy_genesis::Genesis::default());
+
+        let hooks = crate::hooks::HookConfig {
+            worker_base: "http://worker:8080".into(),
+            challenge: "demo".into(),
+            pea_id: "pea".into(),
+            genesis,
+            precompiles: std::collections::HashMap::new(),
+            incoming_tx: false,
+        };
+
+        let config = create_config(1, 1, None, Some(&hooks));
+        assert!(config.genesis.is_some());
+        // A genesis without a timestamp would otherwise pin the chain to the
+        // earliest hardfork.
+        assert!(config.genesis_timestamp.unwrap_or(0) > 0);
+        // A chain without a document keeps anvil's own genesis.
+        assert!(create_config(2, 1, None, Some(&hooks)).genesis.is_none());
+    }
+
+    #[test]
+    fn create_config_attaches_precompiles_for_the_chain() {
+        let mut precompiles = std::collections::HashMap::new();
+        precompiles.insert(1, vec![alloy_primitives::Address::with_last_byte(0x42)]);
+
+        let hooks = crate::hooks::HookConfig {
+            worker_base: "http://worker:8080".into(),
+            challenge: "demo".into(),
+            pea_id: "pea".into(),
+            genesis: std::collections::HashMap::new(),
+            precompiles,
+            incoming_tx: false,
+        };
+
+        assert!(
+            create_config(1, 1, None, Some(&hooks))
+                .precompile_factory
+                .is_some()
+        );
+        assert!(
+            create_config(2, 1, None, Some(&hooks))
+                .precompile_factory
+                .is_none()
+        );
     }
 }

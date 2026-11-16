@@ -11,6 +11,16 @@ anvil = { git = "https://github.com/foundry-rs/foundry", version = "1.9.0", rev 
 anvil-core = { git = "https://github.com/foundry-rs/foundry", version = "1.9.0", rev = "6056c5845d34205a83cf7108042adb137325c9df" }
 anvil-rpc = { git = "https://github.com/foundry-rs/foundry", version = "1.9.0", rev = "6056c5845d34205a83cf7108042adb137325c9df" }
 alloy-rpc-types = "2.5.0"
+# Challenge hooks: genesis documents and Python-backed EVM precompiles.
+alloy-genesis = "2.5.0"
+alloy-evm = "0.39.0"
+alloy-primitives = "1.7.0"
+# Hook callbacks are plain HTTP to the worker. The async client is used from
+# request handlers; precompiles run on a blocking supervisor thread and use a
+# small std-only client, because dropping a blocking client on an async thread
+# panics (it joins its private runtime thread).
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+url = "2.5"
 eyre = "0.6.14"
 tokio = { version = "1.54.1", features = ["sync"] }
 libc = "0.2.191"

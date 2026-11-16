@@ -6,6 +6,9 @@ pub type RpcForwardResult = Option<RpcResponseEnvelope>;
 
 pub struct NodeEntry {
     pub nodes: std::collections::HashMap<u64, SingleNodeEntry>,
+    /// Transaction firewall, present only when the challenge implements
+    /// `on_incoming_tx`. Inert until the worker arms it.
+    pub screener: Option<crate::hooks::Screener>,
 }
 
 impl NodeEntry {

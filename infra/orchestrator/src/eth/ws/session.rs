@@ -28,14 +28,23 @@ pub struct JsonRpcWebsocketSession {
     node_id: String,
     sender: mpsc::Sender<supervisor::Command>,
     subscriptions: HashMap<SubscriptionId, ActiveSubscription>,
+    screener: Option<crate::hooks::Screener>,
+    chain_id: u64,
 }
 
 impl JsonRpcWebsocketSession {
-    pub fn new(node_id: String, sender: mpsc::Sender<supervisor::Command>) -> Self {
+    pub fn new(
+        node_id: String,
+        sender: mpsc::Sender<supervisor::Command>,
+        screener: Option<crate::hooks::Screener>,
+        chain_id: u64,
+    ) -> Self {
         Self {
             node_id,
             sender,
             subscriptions: HashMap::new(),
+            screener,
+            chain_id,
         }
     }
 
@@ -87,7 +96,9 @@ impl JsonRpcWebsocketSession {
     fn forward_standard_request(&self, request: RpcRequest, ctx: &mut ws::WebsocketContext<Self>) {
         let sender = self.sender.clone();
         let node_id = self.node_id.clone();
-        let fut = async move { dispatch_rpc_request(sender, request).await };
+        let screener = self.screener.clone();
+        let chain_id = self.chain_id;
+        let fut = async move { dispatch_rpc_request(sender, request, screener, chain_id).await };
 
         ctx.spawn(
             fut.into_actor(self)
@@ -323,9 +334,29 @@ impl std::error::Error for ForwardError {}
 async fn dispatch_rpc_request(
     sender: mpsc::Sender<supervisor::Command>,
     request: RpcRequest,
+    screener: Option<crate::hooks::Screener>,
+    chain_id: u64,
+) -> Result<RpcForwardResult, ForwardError> {
+    let screened = crate::hooks::apply(screener.as_ref(), chain_id, request).await;
+
+    let forwarded = match screened.forward {
+        Some(request) => Some(forward_request(sender, request).await?),
+        None => None,
+    };
+
+    Ok(crate::hooks::merge(
+        forwarded.flatten(),
+        screened.denied,
+        screened.was_single,
+    ))
+}
+
+async fn forward_request(
+    sender: mpsc::Sender<supervisor::Command>,
+    request: RpcRequest,
 ) -> Result<RpcForwardResult, ForwardError> {
     let (response_tx, response_rx) = oneshot::channel();
-    let job_request = request.clone();
+    let job_request = request;
     let job = Box::new(move |api: crate::anvil::EthApi| -> eyre::Result<()> {
         let handle = tokio::runtime::Handle::current();
         let response = http::execute_rpc_request(&handle, &api, job_request);

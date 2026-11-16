@@ -17,7 +17,11 @@ var ORCHESTRATOR_BASE = "http://orchestrator:8080"
 // The three comma separated lists are parallel: entry i of each list describes
 // the chain at entry i of `chains`. It returns nil when there is nothing to
 // describe, which lets the caller post without a query string.
-func DeployQuery(chains []types.ChainConfig) url.Values {
+//
+// `challenge` tells the orchestrator which challenge is being deployed so it can
+// fetch that challenge's deploy-time hooks (genesis documents and precompiles)
+// before the nodes spawn.
+func DeployQuery(chains []types.ChainConfig, challenge string) url.Values {
 	if len(chains) == 0 {
 		return nil
 	}
@@ -35,12 +39,15 @@ func DeployQuery(chains []types.ChainConfig) url.Values {
 	params.Set("chains", strings.Join(ids, ","))
 	params.Set("block_times", strings.Join(blockTimes, ","))
 	params.Set("tx_orders", strings.Join(txOrders, ","))
+	if challenge != "" {
+		params.Set("challenge", challenge)
+	}
 	return params
 }
 
 func Deploy(pea types.Pea, chains []types.ChainConfig) error {
 	query := ""
-	if params := DeployQuery(chains); params != nil {
+	if params := DeployQuery(chains, pea.ChallengeHash); params != nil {
 		query = "?" + params.Encode()
 	}
 

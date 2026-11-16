@@ -116,10 +116,20 @@ func UploadChallenge(challengeHash string) {
 	}
 }
 
-func DelegateJob(challengeHash string, pea *types.Pea) error {
-	if !ChallengeExists(challengeHash) {
-		UploadChallenge(challengeHash)
+// EnsureChallengeUploaded makes sure the worker has the challenge package.
+//
+// The orchestrator asks the worker for the challenge's hooks at deploy time, so
+// the package must already be cached before any node is spawned. The check is
+// idempotent: a package that is already there is left alone.
+func EnsureChallengeUploaded(challengeHash string) {
+	if ChallengeExists(challengeHash) {
+		return
 	}
+	UploadChallenge(challengeHash)
+}
+
+func DelegateJob(challengeHash string, pea *types.Pea) error {
+	EnsureChallengeUploaded(challengeHash)
 
 	endpointsJSON, _ := json.Marshal(pea.GetAnvilEndpoints())
 	queryParams := url.Values{}

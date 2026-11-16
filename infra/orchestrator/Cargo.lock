@@ -6974,6 +6974,9 @@ dependencies = [
  "actix-web",
  "actix-web-actors",
  "alloy-eip7928",
+ "alloy-evm",
+ "alloy-genesis",
+ "alloy-primitives",
  "alloy-rpc-types",
  "alloy-trie",
  "anvil",
@@ -6990,9 +6993,11 @@ dependencies = [
  "libc",
  "proptest",
  "rand 0.9.5",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",
+ "url",
 ]
 
 [[package]]

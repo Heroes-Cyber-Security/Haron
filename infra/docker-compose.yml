@@ -24,6 +24,10 @@ services:
     image: hanz.dev/blockchain/worker
     env_file:
       - ./worker/.env
+    environment:
+      # The worker calls back into the orchestrator to arm the transaction
+      # firewall once the challenge's own setup transactions have run.
+      - ORCHESTRATOR_BASE=${ORCHESTRATOR_BASE:-http://orchestrator:8080}
     restart: always
     security_opt:
       - no-new-privileges:true
@@ -39,6 +43,10 @@ services:
     image: hanz.dev/blockchain/orchestrator
     env_file:
       - ./orchestrator/.env
+    environment:
+      # Where the orchestrator fetches a challenge's deploy-time hooks
+      # (genesis documents and precompiles) and forwards hook callbacks.
+      - WORKER_BASE=${WORKER_BASE:-http://worker:8080}
     restart: always
     security_opt:
       - no-new-privileges:true

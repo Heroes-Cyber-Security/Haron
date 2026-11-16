@@ -179,6 +179,10 @@ func main() {
 			ChainIds:      config.GetChainIds(),
 		}
 
+		// The orchestrator reads the challenge's genesis and precompiles from
+		// the worker while deploying, so the package has to be cached first.
+		interop.EnsureChallengeUploaded(challengeHash)
+
 		if err := interop.Deploy(pea, config.NormalizedChains()); err != nil {
 			log.Printf("main: Deploy failed: %v", err)
 			return Jsonify(c, map[string]any{"error": "Failed to deploy instance"})

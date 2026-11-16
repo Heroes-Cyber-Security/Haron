@@ -11,7 +11,9 @@ pub fn start_json_rpc_websocket(
     payload: web::Payload,
     node_id: String,
     sender: mpsc::Sender<supervisor::Command>,
+    screener: Option<crate::hooks::Screener>,
+    chain_id: u64,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let session = JsonRpcWebsocketSession::new(node_id, sender);
+    let session = JsonRpcWebsocketSession::new(node_id, sender, screener, chain_id);
     ws::start(session, req, payload)
 }

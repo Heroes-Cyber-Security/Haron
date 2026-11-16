@@ -2,6 +2,7 @@
 from gevent import monkey
 
 monkey.patch_all()
+import ast
 import hashlib
 import importlib.util
 import inspect
@@ -13,16 +14,19 @@ import secrets
 import shutil
 import subprocess
 import sys
+import textwrap
+import threading
 import traceback
+import urllib.request
 import uuid
 import venv
 import zipfile
-from contextlib import redirect_stderr
-from typing import Callable, Dict, List, Union
+from contextlib import contextmanager, redirect_stderr
+from typing import Callable, Dict, List, Tuple, Union
 from urllib.parse import urlparse
 
+import gevent
 from bottle import HTTPError, get, post, request, run
-from eth_listener import EthListener
 from web3 import Web3
 
 CHALLENGE_HASH_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -40,11 +44,19 @@ def sanitize_challenge_hash(h: str) -> str:
 
 BASE_CACHE_DIR = "/home/ctf/cache"
 CONTRACT_ADDRESS_KEY = "OWNABLE_CONTRACT_ADDRESS"
+ORCHESTRATOR_BASE = os.environ.get("ORCHESTRATOR_BASE", "http://orchestrator:8080")
 
 jobs: Dict[str, "Job"] = {}
 active_jobs = set()
 prepared = set()
 _instance_secrets: Dict[str, dict] = {}
+# One imported chal module per instance. The event listener, `/validate`, and the
+# hook routes must share it: a firewall whose rules live in module globals only
+# works if everyone talks to the same module object.
+_hook_modules: Dict[Tuple[str, str], object] = {}
+# Hook callbacks read their instance data from the environment, like `start()`
+# does. Serialise that window so two instances cannot observe each other's keys.
+_environment_lock = threading.Lock()
 
 def challenge_zip_path(h: str) -> str:
     """The uploaded challenge package, stored once per challenge hash."""
@@ -127,6 +139,312 @@ def prepare_instance(h: str, pea_id: str) -> str:
     return work_dir
 
 
+def _instance_environment(pea_id: str) -> dict:
+    """Environment a challenge sees when its hooks run.
+
+    Mirrors the variables `/delegate` exports to `start()`, restricted to the
+    ones derivable from the pea id. The deployer key is deliberately absent:
+    it is generated per job and only exists once `start()` runs.
+    """
+    private_key, setup_address = generate_key_from_id(pea_id)
+    return {
+        "PEA_ID": pea_id,
+        "PLAYER_PRIVATE_KEY": private_key,
+        "SETUP_ADDRESS": setup_address,
+    }
+
+
+@contextmanager
+def instance_environment(pea_id: str, extra: dict = None):
+    """Applies the instance environment for the duration of a hook call.
+
+    `extra` carries the per-job secrets (deployer key, endpoints) when they are
+    known; hooks that run before `/delegate` only get what the pea id implies.
+    """
+    with _environment_lock:
+        original = os.environ.copy()
+        os.environ.update(_instance_environment(pea_id))
+        if extra:
+            os.environ.update({key: value for key, value in extra.items() if value is not None})
+        try:
+            yield
+        finally:
+            os.environ.clear()
+            os.environ.update(original)
+
+
+def _source_is_stub(source: str) -> bool:
+    """Whether a hook body is only a docstring plus an empty return."""
+    try:
+        node = ast.parse(textwrap.dedent(source)).body[0]
+    except (SyntaxError, IndexError):
+        return False
+
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return False
+
+    for statement in node.body:
+        if isinstance(statement, ast.Pass):
+            continue
+        if (
+            isinstance(statement, ast.Expr)
+            and isinstance(statement.value, ast.Constant)
+            and isinstance(statement.value.value, str)
+        ):
+            continue
+        if isinstance(statement, ast.Return):
+            value = statement.value
+            if value is None or isinstance(value, ast.Constant):
+                continue
+            if isinstance(value, ast.Tuple) and all(
+                isinstance(element, ast.Constant) for element in value.elts
+            ):
+                continue
+            if isinstance(value, ast.Dict) and not value.keys:
+                continue
+            if (
+                isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Name)
+                and value.func.id == "dict"
+                and not value.args
+                and not value.keywords
+            ):
+                continue
+            return False
+        return False
+
+    return True
+
+
+def _function_is_stub(fn) -> bool:
+    """Whether a hook body is only a docstring plus an empty return.
+
+    Challenge templates ship every hook as a stub. Treating those as "not
+    implemented" keeps `/hooks` and the firewall off until an author actually
+    writes something, without forcing them to delete the template.
+    """
+    try:
+        source = inspect.getsource(fn)
+    except (OSError, TypeError):
+        return False
+    return _source_is_stub(source)
+
+
+def ensure_instance_source(h: str, pea_id: str) -> str:
+    """Makes sure the instance's challenge source is on disk.
+
+    Unlike `prepare_instance`, this never builds the challenge venv. Hook code
+    runs in the worker process, so importing `chal.py` only needs the source;
+    building a venv here would blow the orchestrator's deploy-time timeout.
+    """
+    work_dir = instance_dir(h, pea_id)
+    os.makedirs(work_dir, exist_ok=True)
+
+    if os.path.exists(os.path.join(work_dir, "chal.py")):
+        return work_dir
+
+    zip_path = challenge_zip_path(h)
+    if not os.path.exists(zip_path):
+        zip_path = os.path.join(challenge_template_dir(h), f"{h}.zip")
+    if not os.path.exists(zip_path):
+        raise FileNotFoundError(f"challenge package missing for {h}")
+
+    with zipfile.ZipFile(zip_path, "r") as zr:
+        for member in zr.namelist():
+            if member.split("/", 1)[0] == ".venv":
+                continue
+            zr.extract(member, work_dir)
+
+    return work_dir
+
+
+def load_hook_module(h: str, pea_id: str, extra_env: dict = None):
+    """Imports (once) and returns the instance's chal module.
+
+    `/start`, `/validate`, and the hook routes all go through here so that
+    module-level state is shared, which is what a stateful firewall needs.
+    """
+    key = (h, pea_id)
+    cached = _hook_modules.get(key)
+    if cached is not None:
+        return cached
+
+    task_dir = ensure_instance_source(h, pea_id)
+    module_name = f"chal_{h}_{pea_id}"
+    module_path = os.path.join(task_dir, "chal.py")
+
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise HTTPError(500, f"Unable to load chal module at {module_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+
+    with instance_environment(pea_id, extra_env):
+        spec.loader.exec_module(module)
+
+    _hook_modules[key] = module
+    return module
+
+
+def _call_with_chain(handler: Callable, chain_id: int, payload):
+    """Dispatches a hook using the same 0/1/2-argument convention as on_new_block."""
+    parameter_count = len(inspect.signature(handler).parameters)
+    if parameter_count == 0:
+        return handler()
+    if parameter_count == 1:
+        return handler(chain_id)
+    return handler(chain_id, payload)
+
+
+def _normalize_verdict(result) -> Tuple[int, str]:
+    """Coerces an on_incoming_tx return value into `(status, message)`."""
+    if isinstance(result, (tuple, list)):
+        status = int(result[0]) if len(result) >= 1 else 200
+        message = str(result[1]) if len(result) >= 2 and result[1] is not None else ""
+        return status, message
+    if isinstance(result, bool):
+        return (200, "") if result else (403, "transaction rejected")
+    if isinstance(result, int):
+        return result, ""
+    return 200, ""
+
+
+def _checksum(value) -> str:
+    try:
+        return Web3.to_checksum_address(value)
+    except Exception:
+        return str(value)
+
+
+def _hex(value) -> str:
+    if isinstance(value, str):
+        return value if value.startswith("0x") else "0x" + value
+    return "0x" + bytes(value).hex()
+
+
+def _decode_raw_transaction(raw: str) -> dict:
+    """Best-effort decode of a serialised transaction for the firewall.
+
+    `from` is always recovered. The remaining fields come from eth-account's
+    decoders and are omitted when the transaction shape is unrecognised, so a
+    hook can rely on `from` and treat everything else as optional.
+    """
+    from eth_account import Account
+
+    data = bytes.fromhex(raw.removeprefix("0x").removeprefix("0X"))
+    transaction = {"raw": "0x" + data.hex(), "hash": Web3.keccak(data).hex()}
+
+    try:
+        transaction["from"] = _checksum(Account.recover_transaction(data))
+    except Exception:
+        pass
+
+    fields = None
+    try:
+        from eth_account._utils.typed_transactions import TypedTransaction
+
+        fields = TypedTransaction.from_bytes(data).as_dict()
+    except Exception:
+        try:
+            from eth_account._utils.legacy_transactions import Transaction
+
+            fields = Transaction.from_bytes(data).as_dict()
+        except Exception:
+            fields = None
+
+    if isinstance(fields, dict):
+        for source, target in (
+            ("to", "to"),
+            ("value", "value"),
+            ("nonce", "nonce"),
+            ("gas", "gas"),
+            ("data", "data"),
+            ("chainId", "chain_id"),
+            ("gasPrice", "gas_price"),
+            ("maxFeePerGas", "max_fee_per_gas"),
+            ("maxPriorityFeePerGas", "max_priority_fee_per_gas"),
+        ):
+            if source not in fields or fields[source] is None:
+                continue
+            value = fields[source]
+            transaction[target] = _hex(value) if isinstance(value, (bytes, bytearray)) else value
+
+        if transaction.get("to"):
+            transaction["to"] = _checksum(transaction["to"])
+
+    return transaction
+
+
+def _incoming_transaction(payload: dict) -> dict:
+    """Normalises the screening payload sent by the orchestrator."""
+    request_tx = payload.get("tx")
+    if isinstance(request_tx, dict):
+        transaction = dict(request_tx)
+        if transaction.get("from"):
+            transaction["from"] = _checksum(transaction["from"])
+        if transaction.get("to"):
+            transaction["to"] = _checksum(transaction["to"])
+        return transaction
+    return _decode_raw_transaction(payload.get("raw") or "0x")
+
+
+def _encode_precompile_result(result) -> str:
+    if result is None:
+        return "0x"
+    if isinstance(result, (bytes, bytearray)):
+        return "0x" + bytes(result).hex()
+    if isinstance(result, str):
+        return result if result.startswith("0x") else "0x" + result
+    if isinstance(result, int):
+        return "0x" + result.to_bytes(32, "big").hex()
+    return "0x"
+
+
+def _precompile_functions(module, chain_id: int) -> dict:
+    """The address -> callable map for one chain, evaluated once per module."""
+    normalized = getattr(module, "__har_precompiles__", None)
+    if normalized is None:
+        normalized = {}
+        precompile_fn = getattr(module, "precompile", None)
+        if callable(precompile_fn) and not _function_is_stub(precompile_fn):
+            try:
+                mapping = precompile_fn()
+            except Exception as exc:
+                print(f"hooks: precompile() failed: {exc}", file=sys.stderr)
+                mapping = None
+            if isinstance(mapping, dict):
+                for cid, functions in mapping.items():
+                    if not isinstance(functions, dict):
+                        continue
+                    try:
+                        key = int(cid)
+                    except (TypeError, ValueError):
+                        continue
+                    normalized[key] = {
+                        _checksum(address): function
+                        for address, function in functions.items()
+                        if callable(function)
+                    }
+        setattr(module, "__har_precompiles__", normalized)
+
+    try:
+        return normalized.get(int(chain_id), {})
+    except (TypeError, ValueError):
+        return {}
+
+
+def arm_orchestrator(uid: str) -> None:
+    """Tells the orchestrator the instance is deployed and the firewall may arm."""
+    url = f"{ORCHESTRATOR_BASE}/arm/{uid}"
+    arm_request = urllib.request.Request(url, method="POST")
+    try:
+        with urllib.request.urlopen(arm_request, timeout=5) as response:
+            print(f"hooks: armed firewall for {uid}: {response.status}", file=sys.stderr)
+    except Exception as exc:
+        print(f"hooks: unable to arm firewall for {uid}: {exc}", file=sys.stderr)
+
+
 class InstanceDetail:
     def __init__(
         self,
@@ -163,79 +481,151 @@ class Job(object):
     chain_ids: List[int]
     report: dict = {}
 
-    eth_listeners: List[EthListener]
-    new_heads_handler: Callable[..., None]
-
     def __init__(self, uid, task, anvil_endpoints, chain_ids):
         self.uid = uid
         self.task = task
         self.anvil_endpoints = anvil_endpoints
         self.chain_ids = chain_ids
-        self.eth_listeners = []
+        self.watchers: List = []
+        self.module = None
+        self.last_blocks: Dict[int, int] = {}
 
-    def bind_handlers(self, cwd, chain_id: int):
-        module_name = f"chal_{self.uid}"
-        module_path = os.path.join(cwd, "chal.py")
+    def endpoint_for(self, chain_id: int) -> str:
+        try:
+            index = self.chain_ids.index(chain_id)
+        except ValueError:
+            return self.anvil_endpoints[0] if self.anvil_endpoints else ""
+        return self.anvil_endpoints[index]
 
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        if spec is None or spec.loader is None:
-            raise ImportError(f"Unable to load chal module at {module_path}")
-
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = module
-        spec.loader.exec_module(module)
+    def bind_handlers(self, chain_id: int, pea_id: str):
+        """Loads the shared module and validates the block hooks."""
+        # Shared per-instance module: the block watcher, `/validate`, and the
+        # hook routes must all see the same module globals.
+        module = load_hook_module(self.task, pea_id, _instance_secrets.get(self.uid))
 
         handler = getattr(module, "on_new_block", None)
         if not callable(handler):
             raise AttributeError("Expected callable 'on_new_block' in chal module")
 
-        sig = inspect.signature(handler)
-        param_count = len(sig.parameters)
+        self.module = module
 
-        if param_count == 0:
+    def _block_data(self, block) -> Dict:
+        return {
+            "number": block["number"],
+            "hash": _hex(block["hash"]),
+            "parentHash": _hex(block["parentHash"]),
+            "timestamp": block["timestamp"],
+            "miner": _checksum(block.get("miner", "")),
+            "gasLimit": block["gasLimit"],
+            "gasUsed": block["gasUsed"],
+            "baseFeePerGas": block.get("baseFeePerGas", 0),
+        }
 
-            def wrapped_handler(event, cid=chain_id):
-                return handler()
+    def dispatch_block(self, chain_id: int, w3: Web3, number: int):
+        """Runs `on_new_block` and then `on_tx` for one mined block."""
+        try:
+            block = w3.eth.get_block(number, full_transactions=True)
+        except Exception as exc:
+            print(
+                f"watcher: failed to fetch block {number} on chain {chain_id}: {exc}",
+                file=sys.stderr,
+            )
+            return
 
-            self.new_heads_handler = wrapped_handler
-        elif param_count >= 2:
+        block_data = self._block_data(block)
 
-            def wrapped_handler(event, cid=chain_id):
-                block_data = {
-                    "number": event.number,
-                    "hash": event.hash,
-                    "parentHash": event.parent_hash,
-                    "timestamp": event.timestamp,
-                    "miner": event.miner,
-                    "gasLimit": event.gas_limit,
-                    "gasUsed": event.gas_used,
-                    "baseFeePerGas": event.base_fee_per_gas,
-                }
-                return handler(cid, block_data)
+        on_new_block = getattr(self.module, "on_new_block", None)
+        if callable(on_new_block):
+            try:
+                _call_with_chain(on_new_block, chain_id, block_data)
+            except Exception as exc:
+                print(f"on_new_block: hook failed on chain {chain_id}: {exc}", file=sys.stderr)
 
-            self.new_heads_handler = wrapped_handler
-        else:
+        on_tx = getattr(self.module, "on_tx", None)
+        if not callable(on_tx) or _function_is_stub(on_tx):
+            return
 
-            def wrapped_handler(event, cid=chain_id):
-                return handler(cid)
+        # `on_tx` is sugar over `on_new_block`: the same block, one call per
+        # successfully mined transaction.
+        for transaction in block.get("transactions", []):
+            if not isinstance(transaction, dict):
+                continue
+            try:
+                receipt = w3.eth.get_transaction_receipt(transaction["hash"])
+            except Exception:
+                continue
+            if receipt.get("status") != 1:
+                continue
 
-            self.new_heads_handler = wrapped_handler
+            payload = dict(transaction)
+            payload["from"] = _checksum(payload.get("from", ""))
+            if payload.get("to"):
+                payload["to"] = _checksum(payload["to"])
 
-    async def start(self, cwd):
-        for idx, (endpoint, chain_id) in enumerate(zip(self.anvil_endpoints, self.chain_ids)):
-            self.bind_handlers(cwd, chain_id)
-            eth_listener = EthListener(endpoint)
-            eth_listener.on("newHeads", self.new_heads_handler)
-            self.eth_listeners.append(eth_listener)
+            try:
+                _call_with_chain(on_tx, chain_id, payload)
+            except Exception as exc:
+                print(
+                    f"on_tx: hook failed for {payload.get('hash')} on chain {chain_id}: {exc}",
+                    file=sys.stderr,
+                )
+
+    def watch(self, chain_id: int, interval: float = 1.0):
+        """Polls the head and dispatches the block hooks.
+
+        Polling keeps the worker free of the asyncio/gevent mixing that an
+        external websocket listener would introduce, and gevent makes the
+        blocking web3 calls cooperative across instances.
+        """
+        endpoint = self.endpoint_for(chain_id)
+        if not endpoint:
+            return
+
+        w3 = Web3(Web3.HTTPProvider(endpoint))
+        while True:
+            try:
+                number = w3.eth.block_number
+            except Exception:
+                gevent.sleep(interval)
+                continue
+
+            if number > self.last_blocks.get(chain_id, -1):
+                # Dispatch every block we have not seen yet, so a slow poll
+                # never skips a transaction.
+                start = max(self.last_blocks.get(chain_id, -1) + 1, 0)
+                self.last_blocks[chain_id] = number
+                for pending in range(start, number + 1):
+                    self.dispatch_block(chain_id, w3, pending)
+
+            gevent.sleep(interval)
+
+    def start_watching(self):
+        if not self.chain_ids or self.watchers:
+            return
+
+        pea_id = extract_pea_id(self.anvil_endpoints[0])
+        self.bind_handlers(self.chain_ids[0], pea_id)
+
+        on_new_block = getattr(self.module, "on_new_block", None)
+        on_tx = getattr(self.module, "on_tx", None)
+        block_hook = callable(on_new_block) and not _function_is_stub(on_new_block)
+        tx_hook = callable(on_tx) and not _function_is_stub(on_tx)
+
+        # Nothing to dispatch: do not poll a node for a challenge that only
+        # ships the template stubs.
+        if not block_hook and not tx_hook:
+            return
+
+        for chain_id in self.chain_ids:
+            self.watchers.append(gevent.spawn(self.watch, chain_id))
 
     def stop(self):
-        for listener in self.eth_listeners:
+        for watcher in self.watchers:
             try:
-                if hasattr(listener, "stop"):
-                    listener.stop()
+                watcher.kill()
             except Exception:
                 pass
-        self.eth_listeners.clear()
+        self.watchers.clear()
 
     def to_dict(self):
         return {
@@ -312,6 +702,8 @@ def stop(jobid):
         job.stop()
         active_jobs.discard(job)
         del jobs[jobid]
+        pea_id = extract_pea_id(job.anvil_endpoints[0]) if job.anvil_endpoints else ""
+        _hook_modules.pop((job.task, pea_id), None)
     _instance_secrets.pop(jobid, None)
     return "OK"
 
@@ -468,18 +860,143 @@ def delegate(h):
         file=sys.stderr,
     )
 
+    # `start()` has deployed the challenge, so the setup transactions are done.
+    # Only now may the firewall screen anything, otherwise it would drop the
+    # challenge's own deployments and funding.
+    arm_orchestrator(uid)
+
+    # Block hooks start last: they only make sense once the instance exists.
+    try:
+        jobs[uid].start_watching()
+    except Exception as exc:
+        print(f"hooks: unable to start block watcher for {uid}: {exc}", file=sys.stderr)
+
     job_dict = jobs[uid].to_dict()
     return job_dict
 
 
 @post("/start/:uid")
 def start_job(uid):
+    if uid not in jobs:
+        raise HTTPError(404, "Job not found")
     job = jobs[uid]
-    pea_id = extract_pea_id(job.anvil_endpoints[0])
-    task_dir = instance_dir(job.task, pea_id)
-
     active_jobs.add(job)
-    job.start(task_dir)
+    job.start_watching()
+    return "OK"
+
+
+@get("/hooks/:h")
+def hooks_metadata(h):
+    """Deploy-time hook metadata: genesis documents and precompile addresses.
+
+    Called by the orchestrator before any node exists, so only data that can be
+    derived from the pea id is available. The callables stay in this process.
+    """
+    safe_hash = sanitize_challenge_hash(h)
+    pea_id = request.query.get("pea_id") or ""
+    chain_ids = [int(part) for part in request.query.get("chains", "").split(",") if part.strip()]
+
+    try:
+        module = load_hook_module(safe_hash, pea_id)
+    except Exception as exc:
+        print(f"hooks: unable to load {safe_hash} for {pea_id}: {exc}", file=sys.stderr)
+        return {}
+
+    result: Dict = {"genesis": {}, "precompiles": {}, "incoming_tx": False}
+
+    with instance_environment(pea_id):
+        genesis_fn = getattr(module, "genesis", None)
+        if callable(genesis_fn) and not _function_is_stub(genesis_fn):
+            try:
+                documents = genesis_fn()
+            except Exception as exc:
+                print(f"hooks: genesis() failed for {safe_hash}: {exc}", file=sys.stderr)
+                documents = None
+            if isinstance(documents, dict):
+                for chain, document in documents.items():
+                    if isinstance(document, dict):
+                        result["genesis"][str(chain)] = document
+
+        for chain_id in chain_ids:
+            functions = _precompile_functions(module, chain_id)
+            if functions:
+                result["precompiles"][str(chain_id)] = list(functions)
+
+    incoming_tx = getattr(module, "on_incoming_tx", None)
+    result["incoming_tx"] = callable(incoming_tx) and not _function_is_stub(incoming_tx)
+
+    return result
+
+
+@post("/hooks/:h/precompile")
+def hooks_precompile(h):
+    """Runs one Python-backed precompile call on behalf of the orchestrator."""
+    safe_hash = sanitize_challenge_hash(h)
+    payload = request.json or {}
+
+    try:
+        module = load_hook_module(safe_hash, payload.get("pea_id", ""))
+    except Exception as exc:
+        print(f"hooks: unable to load {safe_hash} for precompile: {exc}", file=sys.stderr)
+        return {"status": "revert", "bytes": "0x"}
+
+    chain_id = payload.get("chain_id")
+    functions = _precompile_functions(module, chain_id)
+    function = functions.get(_checksum(payload.get("address", "")))
+    if function is None:
+        return {"status": "revert", "bytes": "0x"}
+
+    call = {
+        "chain_id": chain_id,
+        "address": _checksum(payload.get("address", "")),
+        "caller": _checksum(payload.get("caller", "")),
+        "value": payload.get("value", "0"),
+        "data": payload.get("data", "0x"),
+        "gas": payload.get("gas", 0),
+        "is_static": bool(payload.get("is_static", False)),
+    }
+
+    try:
+        with instance_environment(payload.get("pea_id", "")):
+            result = function(call)
+    except Exception as exc:
+        print(f"hooks: precompile {call['address']} failed: {exc}", file=sys.stderr)
+        return {"status": "revert", "bytes": "0x"}
+
+    return {"status": "success", "bytes": _encode_precompile_result(result)}
+
+
+@post("/hooks/:h/incoming_tx")
+def hooks_incoming_tx(h):
+    """Consults the challenge's transaction firewall.
+
+    Any 4xx status tells the orchestrator to drop the transaction and relay
+    `message` to the player.
+    """
+    safe_hash = sanitize_challenge_hash(h)
+    payload = request.json or {}
+
+    try:
+        module = load_hook_module(safe_hash, payload.get("pea_id", ""))
+    except Exception as exc:
+        print(f"hooks: unable to load {safe_hash} for screening: {exc}", file=sys.stderr)
+        return {"status": 200, "message": ""}
+
+    handler = getattr(module, "on_incoming_tx", None)
+    if not callable(handler) or _function_is_stub(handler):
+        return {"status": 200, "message": ""}
+
+    try:
+        transaction = _incoming_transaction(payload)
+        with instance_environment(payload.get("pea_id", "")):
+            status, message = _normalize_verdict(
+                _call_with_chain(handler, payload.get("chain_id"), transaction)
+            )
+    except Exception as exc:
+        print(f"hooks: on_incoming_tx failed: {exc}", file=sys.stderr)
+        return {"status": 200, "message": ""}
+
+    return {"status": status, "message": message}
 
 
 @get("/package/:h")
@@ -512,26 +1029,13 @@ def validate(uid):
     pea_id = extract_pea_id(job.anvil_endpoints[0])
     task_dir = instance_dir(job.task, pea_id)
 
-    module_name = f"chal_{uid}"
-    module_path = os.path.join(task_dir, "chal.py")
-
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    if spec is None or spec.loader is None:
+    # Same module the listener and the hook routes use, so a challenge can keep
+    # state in module globals between on_incoming_tx and is_solved.
+    try:
+        module = load_hook_module(job.task, pea_id)
+    except Exception as exc:
+        print(f"validate: unable to load chal module: {exc}", file=sys.stderr)
         raise HTTPError(500, "Unable to load chal module")
-
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-
-    secrets = _instance_secrets.get(uid)
-    original_env = os.environ.copy()
-    if secrets:
-        os.environ.update(secrets)
-
-    spec.loader.exec_module(module)
-
-    if secrets:
-        os.environ.clear()
-        os.environ.update(original_env)
 
     setup_address = job.report.get("anvil_config", {}).get("setup_address")
     player_private_key = job.report.get("anvil_config", {}).get("player_private_key")
@@ -557,7 +1061,7 @@ def validate(uid):
 
     try:
         f = io.StringIO()
-        with redirect_stderr(f):
+        with redirect_stderr(f), instance_environment(pea_id, _instance_secrets.get(uid)):
             solved = module.is_solved(instance)
         stderr_output = f.getvalue()
         if stderr_output:

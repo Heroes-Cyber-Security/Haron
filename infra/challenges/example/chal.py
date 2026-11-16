@@ -107,39 +107,74 @@ def start() -> Dict:
 
 def precompile() -> Dict:
     """
-    EXPERIMENTAL
+    EXPERIMENTAL: Python-backed EVM precompiles.
+
+    Return `{chainId: {address: function}}`. Each function is installed as a
+    real precompile on that chain, so it runs for internal CALLs as well as
+    top-level eth_call. The function receives one dict:
+
+        {
+            "chain_id":  int,
+            "address":   "0x...",   # the precompile address being called
+            "caller":    "0x...",   # msg.sender of the call
+            "value":     "0",       # call value as a decimal string
+            "data":      "0x...",   # calldata
+            "gas":       int,       # gas limit for the call
+            "is_static": bool,      # whether this is a STATICCALL context
+        }
+
+    Return the output bytes (bytes, "0x..." string, or int). Raising an
+    exception reverts the call. Do not call back into this chain from here: the
+    orchestrator serialises requests to a node, so that would deadlock.
     """
     return dict()
 
 
 def genesis() -> Optional[Dict]:
     """
-    Returns a genesis.json file
+    Return `{chainId: genesis.json contents}`.
+
+    Each document is installed as that chain's genesis before the node starts,
+    so it can pre-fund accounts, pre-deploy code, or set chain parameters.
     """
     return None
 
 
 def on_new_block():
     """
-    Triggered every time a new block has been mined
+    Triggered every time a new block has been mined.
+
+    Accepts 0, 1, or 2 parameters: (), (chain_id), or (chain_id, block) where
+    block carries number/hash/parentHash/timestamp/miner/gasLimit/gasUsed.
     """
     pass
 
 
 def on_incoming_tx() -> Tuple[int, str]:
     """
-    Triggered every time a new tx is proposed to the mempool
+    Triggered for every transaction a player submits, before it reaches the node.
+
+    Accepts 0, 1, or 2 parameters: (), (chain_id), or (chain_id, tx) where tx
+    carries at least `from`, plus `to`, `value`, `data`, `nonce`, `gas`,
+    `gas_price`, and `hash` when they can be decoded.
 
     Returns:
-     - int: HTTP status code, with 4xx dropping the incoming tx
-     - str: Error message when tx is dropped
+     - int: HTTP status code; 4xx drops the transaction
+     - str: Error message relayed to the player when the tx is dropped
+
+    Note: this runs in the worker process, not in the `start()` subprocess, so
+    module-level state set by `start()` is not visible here. Use the environment
+    or recompute what you need.
     """
     return 200, ""
 
 
 def on_tx():
     """
-    Triggered every time a transaction has been included in a block
+    Shorthand for on_new_block plus a per-transaction loop.
+
+    Called once for every successfully mined transaction, with the same
+    argument convention as on_incoming_tx.
     """
     pass
 
