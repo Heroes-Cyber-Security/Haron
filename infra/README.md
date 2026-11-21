@@ -36,8 +36,10 @@ SERVICES="manager webui" ./publish.sh  # publish a subset
 PLATFORM=linux/amd64 ./publish.sh      # force a platform
 ```
 
-Builds are slow: `worker` compiles Python and installs Foundry, and
-`orchestrator` compiles Rust from source.
+Builds are slow: `orchestrator` compiles Rust from source against the pinned
+foundry revision, and `worker` installs the Python dependencies. Every service
+uses a multi-stage build, so the toolchains stay in the builder stage and the
+runtime images only carry what the service needs.
 
 ## Running published images
 

@@ -1,21 +1,37 @@
+# syntax=docker/dockerfile:1
+
+# Build stage. The toolchain, cargo caches and the target directory stay here so
+# the runtime image only carries the compiled binary.
+FROM rust:1.100-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        pkg-config \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/build/target \
+    cargo build --release --locked \
+    && cp target/release/orchestrator /usr/local/bin/orchestrator
+
 FROM debian:12-slim
 
-RUN apt update
-RUN apt upgrade -y
-RUN apt install curl git build-essential -y
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -ms /bin/bash ctf
 
-RUN useradd -ms /bin/bash ctf
-USER ctf
+COPY --from=builder /usr/local/bin/orchestrator /home/ctf/orchestrator
+
 WORKDIR /home/ctf
+USER ctf
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --default-toolchain 1.100.0 --profile minimal
-RUN /home/ctf/.cargo/bin/rustup component add rust-std
-
-# copy manifests first to cache dependency downloads
-COPY Cargo.toml Cargo.lock /home/ctf/
-
-# copy rest and build release
-COPY src/ /home/ctf/src/
-RUN /home/ctf/.cargo/bin/cargo build --release
-
-ENTRYPOINT [ "/home/ctf/target/release/orchestrator" ]
+ENTRYPOINT [ "/home/ctf/orchestrator" ]

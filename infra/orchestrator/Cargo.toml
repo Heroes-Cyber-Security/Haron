@@ -78,3 +78,7 @@ alloy-op-hardforks = { git = "https://github.com/foundry-rs/optimism", rev = "20
 tempo-primitives = { git = "https://github.com/tempoxyz/tempo", rev = "55a96bad10cb3e171f1b28dfd6e21bea957df0e4" }
 tempo-alloy = { git = "https://github.com/tempoxyz/tempo", rev = "55a96bad10cb3e171f1b28dfd6e21bea957df0e4" }
 tempo-contracts = { git = "https://github.com/tempoxyz/tempo", rev = "55a96bad10cb3e171f1b28dfd6e21bea957df0e4" }
+
+# The runtime image only carries this binary, so leave the symbol tables behind.
+[profile.release]
+strip = "symbols"

@@ -4,3 +4,8 @@ README.md
 build.sh
 **/__pycache__/
 **/*.pyc
+**/.venv/
+**/cache/
+**/out/
+**/broadcast/
+.ruff_cache/

@@ -1,18 +1,20 @@
-FROM debian:12-slim
+# syntax=docker/dockerfile:1
 
-RUN apt update
-RUN apt upgrade -y
-RUN apt install git curl wget -y
+FROM golang:1.27-bookworm AS builder
 
-RUN useradd -ms /bin/bash ctf
-USER ctf
-WORKDIR /home/ctf
+WORKDIR /build
 
-RUN wget https://go.dev/dl/go1.27.4.linux-amd64.tar.gz -O go.tar.gz
-RUN tar xzf go.tar.gz
+COPY src/go.mod src/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-# Compile sources
-COPY src /home/ctf/
-RUN /home/ctf/go/bin/go build
+COPY src/ ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/forwarder .
 
-ENTRYPOINT [ "/home/ctf/forwarder" ]
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=builder /out/forwarder /usr/local/bin/forwarder
+
+ENTRYPOINT [ "/usr/local/bin/forwarder" ]

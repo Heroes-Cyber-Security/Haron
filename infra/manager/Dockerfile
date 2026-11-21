@@ -1,23 +1,28 @@
-FROM debian:12-slim
+# syntax=docker/dockerfile:1
 
-RUN apt update
-RUN apt upgrade -y
-RUN apt install git curl wget -y
+FROM golang:1.27-bookworm AS builder
 
-RUN useradd -ms /bin/bash ctf
-USER ctf
+WORKDIR /build
+
+COPY src/go.mod src/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY src/ ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/manager .
+
+# The binary is static, so the runtime only needs the CA bundle that distroless
+# already ships. Challenges are read from the bind mount at /home/ctf/challenges.
+# Keep the historic uid 1000 so bind mounts owned by the deploy user stay readable.
+FROM gcr.io/distroless/static-debian12:nonroot
+
+USER 1000:1000
+
 WORKDIR /home/ctf
 
-RUN wget https://go.dev/dl/go1.27.4.linux-amd64.tar.gz -O go.tar.gz
-RUN tar xzf go.tar.gz
-
-# Compile sources
-COPY src/go.mod /home/ctf/
-COPY src/go.sum /home/ctf/
-RUN /home/ctf/go/bin/go mod download
-
-COPY src /home/ctf/
-RUN /home/ctf/go/bin/go build
+COPY --from=builder /out/manager /home/ctf/manager
 
 VOLUME [ "/home/ctf/challenges/" ]
 

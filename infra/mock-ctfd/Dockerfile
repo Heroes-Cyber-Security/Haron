@@ -1,7 +1,14 @@
-FROM python:3.13.7-bookworm
+# syntax=docker/dockerfile:1
 
-COPY app.py /root/
+# The mock only uses the standard library, so the alpine base is enough.
+FROM python:3.13.7-alpine
 
-WORKDIR /root/
+RUN adduser -D -u 1000 ctf
 
-CMD [ "python", "./app.py" ]
+WORKDIR /home/ctf
+
+COPY app.py /home/ctf/app.py
+
+USER ctf
+
+CMD [ "python", "app.py" ]
