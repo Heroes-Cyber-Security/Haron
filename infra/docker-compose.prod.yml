@@ -1,0 +1,75 @@
+name: blockchain-infra
+
+# Runs the published images from Docker Hub instead of building locally.
+# Pin a release with HARON_TAG_SUFFIX=-<version>, e.g.:
+#   HARON_TAG_SUFFIX=-0.1.2 docker compose -f docker-compose.prod.yml up -d
+services:
+  manager:
+    image: hanzlearn/haron:manager${HARON_TAG_SUFFIX:-}
+    env_file:
+      - ./manager/.env
+    environment:
+      - RPC_PUBLIC_HOST=${RPC_PUBLIC_HOST:-localhost:57254}
+    volumes:
+      - ./challenges:/home/ctf/challenges:ro
+    ports:
+      - "40000:8080"
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+  worker:
+    image: hanzlearn/haron:worker${HARON_TAG_SUFFIX:-}
+    env_file:
+      - ./worker/.env
+    environment:
+      # The worker calls back into the orchestrator to arm the transaction
+      # firewall once the challenge's own setup transactions have run.
+      - ORCHESTRATOR_BASE=${ORCHESTRATOR_BASE:-http://orchestrator:8080}
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+  orchestrator:
+    image: hanzlearn/haron:orchestrator${HARON_TAG_SUFFIX:-}
+    env_file:
+      - ./orchestrator/.env
+    environment:
+      # Where the orchestrator fetches a challenge's deploy-time hooks
+      # (genesis documents and precompiles) and forwards hook callbacks.
+      - WORKER_BASE=${WORKER_BASE:-http://worker:8080}
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+  forwarder:
+    image: hanzlearn/haron:forwarder${HARON_TAG_SUFFIX:-}
+    env_file:
+      - ./forwarder/.env
+    ports:
+      - "40001:8080"
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+  webui:
+    image: hanzlearn/haron:webui${HARON_TAG_SUFFIX:-}
+    ports:
+      - "57254:80"
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID

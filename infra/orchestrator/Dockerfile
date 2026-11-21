@@ -15,7 +15,6 @@ RUN /home/ctf/.cargo/bin/rustup component add rust-std
 COPY Cargo.toml Cargo.lock /home/ctf/
 
 # copy rest and build release
-COPY .env /home/ctf/
 COPY src/ /home/ctf/src/
 RUN /home/ctf/.cargo/bin/cargo build --release
 
