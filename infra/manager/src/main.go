@@ -96,6 +96,10 @@ func buildInstanceResponse(pea types.Pea) map[string]any {
 }
 
 func main() {
+	if err := integration.ValidateConfig(); err != nil {
+		log.Fatalf("main: invalid CTF integration config: %v", err)
+	}
+
 	e := echo.New()
 	e.HideBanner = true
 
@@ -115,7 +119,7 @@ func main() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
 
-		player := integration.CTFDGetMe(types.Pea{AccessToken: accessToken})
+		player := integration.GetMe(accessToken)
 		if !player.IsValid() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
@@ -151,7 +155,7 @@ func main() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
 
-		player := integration.CTFDGetMe(types.Pea{AccessToken: accessToken})
+		player := integration.GetMe(accessToken)
 		if !player.IsValid() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
@@ -212,7 +216,7 @@ func main() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
 
-		player := integration.CTFDGetMe(types.Pea{AccessToken: accessToken})
+		player := integration.GetMe(accessToken)
 		if !player.IsValid() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})
 		}
@@ -286,9 +290,9 @@ func main() {
 		return Jsonify(c, map[string]any{"challenges": challenges, "readmes": readmes})
 	})
 
-	// CTFd helpers
+	// CTF platform helpers
 	e.GET("/profile", func(c echo.Context) error {
-		player := integration.CTFDGetMe(types.Pea{AccessToken: c.QueryParam("accessToken")})
+		player := integration.GetMe(c.QueryParam("accessToken"))
 
 		if !player.IsValid() {
 			return Jsonify(c, map[string]any{"error": "Unauthorized"})

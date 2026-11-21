@@ -41,7 +41,7 @@ func sendMessage(text string) {
 func notifyTelegram(pea types.Pea, playerIP, event, extraInfo string) {
 	challengeName := ResolveChallengeName(pea.ChallengeHash)
 
-	playerName := CTFDGetMe(pea).Name
+	playerName := GetMe(pea.AccessToken).Name
 	format := "<code>%s</code> (<code>%s</code>) %s <code>%s</code>\n<code>%s</code>%s"
 	extraTag := ""
 	if extraInfo != "" {

@@ -53,8 +53,26 @@ HARON_TAG_SUFFIX=-0.1.2 docker compose -f docker-compose.prod.yml up -d
 ```
 
 Each service still reads its configuration from `<service>/.env`. For a real
-deployment, point `manager`'s `CTFD_BASE` at your CTFd instance rather than
-the mock.
+deployment, point `manager`'s `CTF_BASE` at your CTF platform rather than the
+mock.
 
-For local development, use `./debug.sh` with the default
-`docker-compose.yml`.
+## CTF platform integration
+
+`manager` authenticates players against CTFd or rCTF. Select the platform with
+`CTF_PLATFORM` (default `ctfd`) and point `CTF_BASE` at the instance:
+
+```env
+# CTFd
+CTF_PLATFORM=ctfd
+CTF_BASE=https://ctfd.example.com
+
+# rCTF
+CTF_PLATFORM=rctf
+CTF_BASE=https://rctf.example.com
+```
+
+`CTFD_BASE` and `RCTF_BASE` are still accepted as platform-specific fallbacks
+when `CTF_BASE` is unset. With rCTF, players paste their **auth token** (the
+`Authorization: Bearer` token from login), not the team token.
+
+For local development, use `./debug.sh` with the default `docker-compose.yml`.

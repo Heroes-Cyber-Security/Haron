@@ -8,5 +8,6 @@ run:
 	CHALLENGE_NAME="test" \
 	TELEGRAM_API_KEY="<your-telegram-api-key>" \
 	TELEGRAM_CHAT_ID="<your-telegram-chat-id>" \
-	CTFD_BASE="http://localhost:9090/" \
+	CTF_PLATFORM="ctfd" \
+	CTF_BASE="http://localhost:9090/" \
 	./manager

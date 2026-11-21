@@ -18,7 +18,16 @@ class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?", 1)[0].rstrip("/")
         if path == "/api/v1/users/me":
+            # CTFd shape.
             resp = {"success": True, "data": {"id": 1, "name": "Player"}}
+            self._send_json(resp, status=200)
+        elif path == "/api/v2/users/me":
+            # rCTF shape. Uses the auth token sent as `Authorization: Bearer`.
+            resp = {
+                "kind": "goodUserSelfDataV2",
+                "message": "The user's own data was successfully retrieved.",
+                "data": {"id": "team-1", "name": "Player"},
+            }
             self._send_json(resp, status=200)
         else:
             self._send_json({"success": False, "error": "not found"}, status=404)

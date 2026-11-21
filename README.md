@@ -9,7 +9,7 @@ DX-first infrastructure for blockchain CTF challenges.
 - Foundry-native
 - Memory-efficient
 - Modular microservices
-- CTFd auth integration (by Access Token)
+- CTFd or rCTF auth integration (by Access Token)
 - Telegram notification
 - Dynamic flag by default, static flag by choice
 
